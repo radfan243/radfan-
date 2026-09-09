@@ -1,4 +1,4 @@
-# NEXORA AI — Trading Intelligence
+# GeoTrade AI — Trading Intelligence
 
 واجهة تحليل سوق فاخرة ومتجاوبة، مبنية كـ MVP مستقل داخل هذا المستودع.
 
