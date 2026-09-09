@@ -1,6 +1,8 @@
 name: Build GOLDAN AI APK
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
