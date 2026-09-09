@@ -15,8 +15,13 @@
   <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
   <header class="topbar">
     <a class="brand" href="#top"><span class="brand-mark">G</span><span><b>GeoTrade AI</b><small>TRADING INTELLIGENCE</small></span></a>
+    <nav class="nav-links" aria-label="أدوات GeoTrade AI">
+      <a class="nav-link active" href="index.html">التحليل</a>
+      <a class="nav-link" href="phase2.html">Backtest / Paper</a>
+      <a class="nav-link" href="ai-lab.html">ML Lab</a>
+    </nav>
     <div class="live"><i></i> بيانات Binance مباشرة</div>
-    <button id="refreshBtn" class="icon-btn" title="تحديث">↻</button>
+    <button id="refreshBtn" class="icon-btn" title="تحديث" aria-label="تحديث البيانات">↻</button>
   </header>
 
   <main id="top" class="shell">
@@ -30,7 +35,7 @@
     <section class="workspace">
       <aside class="panel watchlist">
         <div class="panel-head"><div><span class="eyebrow">MARKET WATCH</span><h2>الأسواق</h2></div><span class="count" id="coinCount">0</span></div>
-        <div class="search"><span>⌕</span><input id="searchInput" placeholder="ابحث عن عملة…" autocomplete="off"></div>
+        <div class="search"><span>⌕</span><input id="searchInput" placeholder="ابحث عن عملة…" autocomplete="off" aria-label="البحث عن عملة"></div>
         <div class="filters"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="positive">صاعد</button><button class="filter" data-filter="negative">هابط</button></div>
         <div id="coinList" class="coin-list"></div>
         <p class="mini-note">تصنيف «متوافق» ليس فتوى شرعية. راجع منهجك الشرعي ومصدرًا موثوقًا قبل التداول.</p>
@@ -42,12 +47,13 @@
           <div class="price"><b id="assetPrice">—</b><span id="assetChange">—</span></div>
         </div>
 
-        <div class="signal-card" id="signalCard"><div><span class="eyebrow">AI CONFLUENCE</span><h2 id="signalText">تحليل…</h2><p id="signalReason">نجمع إشارات السوق الآن.</p></div><div class="confidence"><b id="confidence">—</b><span>قوة الإشارة</span></div></div>
+        <div class="signal-card wait" id="signalCard"><div><span class="eyebrow">AI CONFLUENCE</span><h2 id="signalText">تحليل…</h2><p id="signalReason">نجمع إشارات السوق الآن.</p></div><div class="confidence"><b id="confidence">—</b><span>قوة الإشارة</span></div></div>
 
         <div class="chart-panel"><div class="chart-head"><div><span class="eyebrow">PRICE ACTION</span><h3>حركة السعر</h3></div><div class="timeframes"><button class="tf active" data-interval="15m">15د</button><button class="tf" data-interval="1h">1س</button><button class="tf" data-interval="4h">4س</button><button class="tf" data-interval="1d">يومي</button></div></div><canvas id="chart" height="270"></canvas></div>
 
         <div class="metrics" id="metrics"></div>
         <div class="trade-plan"><div><span class="eyebrow">RISK PLAN</span><h3>خطة الإشارة</h3></div><div class="plan-grid"><div><span>الدخول المرجعي</span><b id="entry">—</b></div><div><span>وقف الخسارة</span><b id="stop">—</b></div><div><span>الهدف 1</span><b id="target1">—</b></div><div><span>الهدف 2</span><b id="target2">—</b></div></div></div>
+        <div id="errorBox" class="error-box" hidden role="alert"></div>
         <div class="disclaimer">⚠️ هذه أداة تحليلية وليست ضمانًا للربح أو توصية استثمارية. لا يوجد نظام يضمن دقة 100% أو يمنع الخسارة. ابدأ بمحاكاة التداول واختبر الاستراتيجية تاريخيًا.</div>
       </section>
     </section>
