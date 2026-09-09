@@ -1,0 +1,46 @@
+name: NEXORA Build Validation
+on:
+  push:
+    branches: ["main", "trade-ai-v1", "trade-ai-phase2", "trade-ai-phase3"]
+  pull_request:
+    branches: ["main", "trade-ai-v1", "trade-ai-phase2", "trade-ai-phase3"]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate HTML files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, sys
+          bad=[]
+          for p in Path('.').glob('*.html'):
+              s=p.read_text(encoding='utf-8')
+              if '<html' not in s.lower() or '</html>' not in s.lower(): bad.append(f'{p}: invalid HTML shell')
+              if s.count('<script') != s.count('</script>'): bad.append(f'{p}: script tag mismatch')
+              if s.count('<style') != s.count('</style>'): bad.append(f'{p}: style tag mismatch')
+          if bad:
+              print('\n'.join(bad)); sys.exit(1)
+          print('HTML structural validation passed')
+          PY
+      - name: Validate JavaScript syntax
+        run: |
+          node --version
+          for f in app.js; do
+            if [ -f "$f" ]; then node --check "$f"; fi
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, sys
+          for p in Path('.').glob('*.html'):
+              s=p.read_text(encoding='utf-8')
+              scripts=re.findall(r'<script[^>]*>(.*?)</script>',s,re.S|re.I)
+              for i,js in enumerate(scripts,1):
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
+                      f.write(js); name=f.name
+                  r=subprocess.run(['node','--check',name],text=True,capture_output=True)
+                  if r.returncode:
+                      print(f'{p} script {i} failed:\n{r.stderr}'); sys.exit(1)
+          print('Embedded JavaScript syntax validation passed')
+          PY
