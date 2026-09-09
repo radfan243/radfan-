@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070b16">
+  <meta name="description" content="NEXORA AI — لوحة تحليل سوق العملات الرقمية ببيانات Binance العامة.">
+  <title>NEXORA AI — Trading Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <header class="topbar">
+    <a class="brand" href="#top"><span class="brand-mark">N</span><span><b>NEXORA</b><small>AI TRADING INTELLIGENCE</small></span></a>
+    <div class="live"><i></i> بيانات Binance مباشرة</div>
+    <button id="refreshBtn" class="icon-btn" title="تحديث">↻</button>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="hero">
+      <div><span class="eyebrow">SMART MARKET DESK</span><h1>تحليل ذكي للسوق<br><em>بدون ضوضاء.</em></h1><p>محرك إشارات يجمع الاتجاه والزخم والحجم والتذبذب ليعرض <strong>شراء / بيع / انتظار</strong> بوضوح.</p></div>
+      <div class="hero-stat"><span>حالة المحرك</span><b id="engineState">جاهز للتحليل</b><small id="updatedAt">—</small></div>
+    </section>
+
+    <section class="ticker-grid" id="tickerGrid"></section>
+
+    <section class="workspace">
+      <aside class="panel watchlist">
+        <div class="panel-head"><div><span class="eyebrow">MARKET WATCH</span><h2>الأسواق</h2></div><span class="count" id="coinCount">0</span></div>
+        <div class="search"><span>⌕</span><input id="searchInput" placeholder="ابحث عن عملة…" autocomplete="off"></div>
+        <div class="filters"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="positive">صاعد</button><button class="filter" data-filter="negative">هابط</button></div>
+        <div id="coinList" class="coin-list"></div>
+        <p class="mini-note">تصنيف «متوافق» ليس فتوى شرعية. راجع منهجك الشرعي ومصدرًا موثوقًا قبل التداول.</p>
+      </aside>
+
+      <section class="main-panel">
+        <div class="asset-head">
+          <div class="asset-title"><div class="coin-logo" id="assetLogo">₿</div><div><span id="assetSymbol">BTC/USDT</span><small id="assetName">Bitcoin</small></div></div>
+          <div class="price"><b id="assetPrice">—</b><span id="assetChange">—</span></div>
+        </div>
+
+        <div class="signal-card" id="signalCard"><div><span class="eyebrow">AI CONFLUENCE</span><h2 id="signalText">تحليل…</h2><p id="signalReason">نجمع إشارات السوق الآن.</p></div><div class="confidence"><b id="confidence">—</b><span>قوة الإشارة</span></div></div>
+
+        <div class="chart-panel"><div class="chart-head"><div><span class="eyebrow">PRICE ACTION</span><h3>حركة السعر</h3></div><div class="timeframes"><button class="tf active" data-interval="15m">15د</button><button class="tf" data-interval="1h">1س</button><button class="tf" data-interval="4h">4س</button><button class="tf" data-interval="1d">يومي</button></div></div><canvas id="chart" height="270"></canvas></div>
+
+        <div class="metrics" id="metrics"></div>
+        <div class="trade-plan"><div><span class="eyebrow">RISK PLAN</span><h3>خطة الإشارة</h3></div><div class="plan-grid"><div><span>الدخول المرجعي</span><b id="entry">—</b></div><div><span>وقف الخسارة</span><b id="stop">—</b></div><div><span>الهدف 1</span><b id="target1">—</b></div><div><span>الهدف 2</span><b id="target2">—</b></div></div></div>
+        <div class="disclaimer">⚠️ هذه أداة تحليلية وليست ضمانًا للربح أو توصية استثمارية. لا يوجد نظام يضمن دقة 100% أو يمنع الخسارة. ابدأ بمحاكاة التداول واختبر الاستراتيجية تاريخيًا.</div>
+      </section>
+    </section>
+  </main>
+  <footer>NEXORA AI · Market intelligence interface · Binance public market data</footer>
+  <script src="app.js"></script>
+</body>
+</html>
