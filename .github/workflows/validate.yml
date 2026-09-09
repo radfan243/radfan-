@@ -1,4 +1,4 @@
-name: NEXORA Build Validation
+name: GeoTrade AI Build Validation
 on:
   push:
     branches: ["main", "trade-ai-v1", "trade-ai-phase2", "trade-ai-phase3"]
