@@ -1,0 +1,8 @@
+{
+  "appId": "com.goldanai.trading",
+  "appName": "GOLDAN AI",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
