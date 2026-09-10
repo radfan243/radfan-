@@ -39,6 +39,72 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Add GOLDAN background alert service
+        run: |
+          mkdir -p android/app/src/main/java/com/goldanai/trading
+          cat > android/app/src/main/java/com/goldanai/trading/MarketAlertService.java <<'EOF'
+          package com.goldanai.trading;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.Service;
+          import android.content.Intent;
+          import android.os.Build;
+          import android.os.IBinder;
+          import androidx.core.app.NotificationCompat;
+          import org.json.JSONArray;
+          import java.io.BufferedReader;
+          import java.io.InputStreamReader;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class MarketAlertService extends Service {
+            private static final String CHANNEL="goldan_market_alerts";
+            private volatile boolean running=true;
+            private String lastSignal="";
+            private String lastSymbol="BTCUSDT";
+            private Thread worker;
+
+            @Override public void onCreate(){super.onCreate();createChannel();startForeground(1201,buildNotification("مراقبة السوق تعمل", "GOLDAN AI يراقب Binance في الخلفية"));worker=new Thread(()->{while(running){try{checkMarket();Thread.sleep(30000);}catch(Exception ignored){}}});worker.start();}
+            @Override public int onStartCommand(Intent intent,int flags,int startId){return START_STICKY;}
+            @Override public IBinder onBind(Intent intent){return null;}
+            @Override public void onDestroy(){running=false;super.onDestroy();}
+
+            private void createChannel(){if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(CHANNEL,"GOLDAN AI Alerts",NotificationManager.IMPORTANCE_HIGH);c.setDescription("تنبيهات شراء وبيع GOLDAN AI");((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);}}
+            private Notification buildNotification(String title,String text){return new NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(text).setOngoing(true).setPriority(NotificationCompat.PRIORITY_LOW).build();}
+            private void alert(String title,String text){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);nm.notify(1202,(new NotificationCompat.Builder(this,CHANNEL)).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(text).setStyle(new NotificationCompat.BigTextStyle().bigText(text)).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build());}
+            private String fetch(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestMethod("GET");BufferedReader r=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder b=new StringBuilder();String line;while((line=r.readLine())!=null)b.append(line);r.close();c.disconnect();return b.toString();}
+            private void checkMarket(){try{String[] symbols={"BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT"};for(String s:symbols){String json=fetch("https://api.binance.com/api/v3/klines?symbol="+s+"&interval=15m&limit=70");JSONArray rows=new JSONArray(json);List<Double> closes=new ArrayList<>();for(int i=0;i<rows.length()-1;i++)closes.add(rows.getJSONArray(i).getDouble(4));if(closes.size()<55)continue;double e20=ema(closes,20),e50=ema(closes,50),rsi=rsi(closes,14),p=closes.get(closes.size()-1);String signal=(p>e20&&e20>e50&&rsi>=55&&rsi<72)?"شراء":(p<e20&&e20<e50&&rsi<45)?"بيع":"انتظار";if(signal.equals("شراء")||signal.equals("بيع")){if(!s.equals(lastSymbol)||!signal.equals(lastSignal)){String word=signal.equals("شراء")?"شراء الآن":"بيع الآن";alert("GOLDAN AI · "+word,s.replace("USDT","/USDT")+" — السعر الحالي $"+price(p)+" — إشارة جديدة من Binance.");lastSymbol=s;lastSignal=signal;}}} }catch(Exception ignored){}}
+            private double ema(List<Double> v,int p){double e=0,k=2.0/(p+1);for(int i=0;i<p;i++)e+=v.get(i);e/=p;for(int i=p;i<v.size();i++)e=v.get(i)*k+e*(1-k);return e;}
+            private double rsi(List<Double> v,int p){double g=0,l=0;for(int i=1;i<=p;i++){double d=v.get(i)-v.get(i-1);if(d>=0)g+=d;else l-=d;}double ag=g/p,al=l/p;for(int i=p+1;i<v.size();i++){double d=v.get(i)-v.get(i-1);ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;}return al==0?100:100-100/(1+ag/al);}
+            private String price(double p){return String.format(java.util.Locale.US,"%.2f",p);}
+          }
+          EOF
+          cat > android/app/src/main/java/com/goldanai/trading/MainActivity.java <<'EOF'
+          package com.goldanai.trading;
+          import android.Manifest;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+          public class MainActivity extends BridgeActivity {
+            @Override public void onCreate(Bundle savedInstanceState){super.onCreate(savedInstanceState);if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},900);startAlertService();}
+            private void startAlertService(){Intent i=new Intent(this,MarketAlertService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
+          }
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          s=s.replace('<application ', '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />\n    <application ')
+          s=s.replace('</application>', '    <service android:name=".MarketAlertService" android:exported="false" android:foregroundServiceType="dataSync" />\n    </application>')
+          p.write_text(s)
+          PY
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
