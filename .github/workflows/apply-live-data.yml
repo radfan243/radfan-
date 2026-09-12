@@ -1,0 +1,83 @@
+name: Upgrade GOLDAN AI live market data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-live-data.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-live-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch GOLDAN AI for live Binance WebSocket data
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app.js')
+          s = p.read_text(encoding='utf-8')
+
+          old = "const state={symbol:'BTCUSDT',interval:'15m',ticker:[],klines:[],loading:false,lastSignal:null,lastPrice:null,alertEnabled:false};"
+          new = "const state={symbol:'BTCUSDT',interval:'15m',ticker:[],klines:[],loading:false,lastSignal:null,lastPrice:null,alertEnabled:false,socket:null,liveKline:null,socketGeneration:0};"
+          if old in s and "socketGeneration" not in s:
+              s=s.replace(old,new,1)
+
+          old = "function renderAsset(t){const c=+t.priceChangePercent;"
+          live = r'''function stopLiveStream(){state.socketGeneration++;if(state.socket){try{state.socket.close()}catch(e){}}state.socket=null;state.liveKline=null}
+          function connectLiveStream(){stopLiveStream();const gen=state.socketGeneration;const url=`wss://stream.binance.com:9443/ws/${state.symbol.toLowerCase()}@kline_${state.interval}`;try{const ws=new WebSocket(url);state.socket=ws;ws.onopen=()=>{if(gen===state.socketGeneration)$('engineState').textContent='LIVE · Binance WebSocket'};ws.onmessage=ev=>{if(gen!==state.socketGeneration)return;try{const d=JSON.parse(ev.data),x=d.k;if(!x)return;const k=[+x.t,+x.o,+x.h,+x.l,+x.c,+x.v,+x.T];state.liveKline=k;state.lastPrice=+x.c;$('assetPrice').textContent='$'+fmt(+x.c,2);drawChart();if(x.x){state.liveKline=null;loadAnalysis()}}catch(e){}};ws.onerror=()=>{if(gen===state.socketGeneration)$('engineState').textContent='LIVE عبر Binance · إعادة الاتصال…'};ws.onclose=()=>{if(gen===state.socketGeneration){state.socket=null;setTimeout(()=>{if(gen===state.socketGeneration)connectLiveStream()},5000)}}}catch(e){if(gen===state.socketGeneration)$('engineState').textContent='LIVE عبر REST · WebSocket غير متاح'}}
+          function renderAsset(t){const c=+t.priceChangePercent;'''
+          if old in s and 'function connectLiveStream()' not in s:
+              s=s.replace(old,live,1)
+
+          old = "state.klines=klines.slice(0,-1);renderAsset(ticker);drawChart();const a=analyze(state.klines);renderAnalysis(a);handleSignalAlert(a,+ticker.lastPrice);$('engineState').textContent='التحليل مكتمل · LIVE';"
+          new = "state.klines=klines.slice(0,-1);state.liveKline=null;renderAsset(ticker);drawChart();const a=analyze(state.klines);renderAnalysis(a);handleSignalAlert(a,+ticker.lastPrice);connectLiveStream();$('engineState').textContent='التحليل مكتمل · LIVE';"
+          if old in s:
+              s=s.replace(old,new,1)
+
+          old = "const choose=()=>{state.symbol=e.dataset.symbol;loadAnalysis()};"
+          new = "const choose=()=>{state.symbol=e.dataset.symbol;stopLiveStream();loadAnalysis()};"
+          if old in s:
+              s=s.replace(old,new,1)
+
+          old = "const k=state.klines.slice(-100);if(k.length<2)return;"
+          new = "const k=state.liveKline?[...state.klines.slice(-99),state.liveKline]:state.klines.slice(-100);if(k.length<2)return;"
+          if old in s:
+              s=s.replace(old,new,1)
+
+          old = "ctx.fillText('100 شمعة مغلقة',8,h-8)}"
+          new = "ctx.fillText(state.liveKline?'LIVE · Binance WebSocket':'100 شمعة مغلقة',8,h-8)}"
+          if old in s:
+              s=s.replace(old,new,1)
+
+          old = "state.interval=b.dataset.interval;loadAnalysis()"
+          new = "state.interval=b.dataset.interval;stopLiveStream();loadAnalysis()"
+          if old in s:
+              s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          print('Live Binance WebSocket patch applied.' if 'function connectLiveStream()' in s else 'Patch marker not applied; stopping.')
+          if 'function connectLiveStream()' not in s:
+              raise SystemExit(1)
+          PY
+
+      - name: Validate JavaScript
+        run: node --check app.js
+
+      - name: Commit patched app
+        run: |
+          if git diff --quiet -- app.js; then
+            echo 'No app.js changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js
+          git commit -m 'Enable live Binance WebSocket market data'
+          git push
