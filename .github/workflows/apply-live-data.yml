@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/apply-live-data.yml'
+      - 'app.js'
   workflow_dispatch:
 
 permissions:
