@@ -69,4 +69,4 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-# Trigger APK build after verified GOLDAN AI changes.
+# Live-data build: app.js now uses Binance REST + WebSocket market data.
