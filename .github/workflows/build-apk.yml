@@ -1,11 +1,9 @@
 # GOLDAN AI Android build
 name: Build GOLDAN AI APK
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -35,135 +33,47 @@ jobs:
           mkdir -p android/app/src/main/java/com/goldanai/trading
           cat > android/app/src/main/java/com/goldanai/trading/GoldanAlertsPlugin.java <<'EOF'
           package com.goldanai.trading;
-
-          import android.Manifest;
-          import android.app.AlarmManager;
-          import android.app.NotificationChannel;
-          import android.app.NotificationManager;
-          import android.app.PendingIntent;
-          import android.content.Context;
-          import android.content.Intent;
-          import android.os.Build;
-          import android.os.SystemClock;
-          import com.getcapacitor.Plugin;
-          import com.getcapacitor.PluginCall;
-          import com.getcapacitor.annotation.CapacitorPlugin;
-          import com.getcapacitor.PluginMethod;
-
-          @CapacitorPlugin(name = "GoldanAlerts")
+          import android.Manifest; import android.app.*; import android.content.*; import android.os.*;
+          import com.getcapacitor.Plugin; import com.getcapacitor.PluginCall; import com.getcapacitor.PluginMethod; import com.getcapacitor.annotation.CapacitorPlugin;
+          @CapacitorPlugin(name="GoldanAlerts")
           public class GoldanAlertsPlugin extends Plugin {
-            private static final String PREFS = "goldan_alerts";
-            private static final String CHANNEL = "goldan_trade_alerts";
-
-            @PluginMethod
-            public void enable(PluginCall call) {
-              String symbol = call.getString("symbol", "BTCUSDT");
-              String interval = call.getString("interval", "15m");
-              getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                .putBoolean("enabled", true).putString("symbol", symbol).putString("interval", interval).apply();
-              createChannel();
-              if (Build.VERSION.SDK_INT >= 33) getActivity().requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 3107);
-              schedule();
-              call.resolve();
-            }
-
-            private void createChannel() {
-              if (Build.VERSION.SDK_INT >= 26) {
-                NotificationChannel c = new NotificationChannel(CHANNEL, "GOLDAN AI تداول", NotificationManager.IMPORTANCE_HIGH);
-                c.setDescription("تنبيهات الشراء والبيع من تحليل السوق");
-                ((NotificationManager)getContext().getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(c);
-              }
-            }
-
-            public void schedule() {
-              Context ctx=getContext();
-              AlarmManager am=(AlarmManager)ctx.getSystemService(Context.ALARM_SERVICE);
-              Intent i=new Intent(ctx, AlertReceiver.class);
-              PendingIntent pi=PendingIntent.getBroadcast(ctx, 3108, i, PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-              am.cancel(pi);
-              am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime()+45000, 15*60*1000L, pi);
-            }
+            private static final String PREFS="goldan_alerts", CHANNEL="goldan_trade_alerts";
+            @PluginMethod public void enable(PluginCall call){ String symbol=call.getString("symbol","BTCUSDT"), interval=call.getString("interval","15m");
+              getContext().getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().putBoolean("enabled",true).putString("symbol",symbol).putString("interval",interval).apply(); createChannel();
+              if(Build.VERSION.SDK_INT>=33)getActivity().requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},3107); schedule(); call.resolve(); }
+            private void createChannel(){if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(CHANNEL,"GOLDAN AI تداول",NotificationManager.IMPORTANCE_HIGH);c.setDescription("تنبيهات الشراء والبيع");((NotificationManager)getContext().getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(c);}}
+            public void schedule(){Context ctx=getContext();AlarmManager am=(AlarmManager)ctx.getSystemService(Context.ALARM_SERVICE);Intent i=new Intent(ctx,AlertReceiver.class);PendingIntent pi=PendingIntent.getBroadcast(ctx,3108,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);am.cancel(pi);am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,SystemClock.elapsedRealtime()+45000,15*60*1000L,pi);}
           }
           EOF
           cat > android/app/src/main/java/com/goldanai/trading/AlertReceiver.java <<'EOF'
           package com.goldanai.trading;
-
-          import android.app.*;
-          import android.content.*;
-          import android.os.*;
-          import android.graphics.Color;
-          import org.json.*;
-          import java.io.*;
-          import java.net.*;
-          import java.util.*;
-
+          import android.app.*; import android.content.*; import android.os.*; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
           public class AlertReceiver extends BroadcastReceiver {
-            private static final String PREFS="goldan_alerts"; private static final String CHANNEL="goldan_trade_alerts";
-            @Override public void onReceive(Context context, Intent intent) {
-              final PendingResult pending=goAsync(); final Context ctx=context.getApplicationContext();
-              new Thread(() -> { try {
-                android.content.SharedPreferences p=ctx.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
-                if(!p.getBoolean("enabled",false)) return;
-                String symbol=p.getString("symbol","BTCUSDT"); String interval=p.getString("interval","15m");
-                String url="https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit=100";
-                HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection(); c.setConnectTimeout(8000); c.setReadTimeout(8000);
-                c.setRequestProperty("User-Agent","GOLDAN-AI/1.0"); BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));
-                StringBuilder sb=new StringBuilder(); String line; while((line=br.readLine())!=null)sb.append(line); br.close(); c.disconnect();
-                JSONArray rows=new JSONArray(sb.toString()); ArrayList<Double> closes=new ArrayList<>();
-                for(int i=0;i<rows.length();i++) closes.add(rows.getJSONArray(i).getDouble(4));
-                if(closes.size()<60) return;
-                double price=closes.get(closes.size()-1),e20=ema(closes,20),e50=ema(closes,50); double r=rsi(closes,14); int score=0;
-                if(price>e20)score++;else score--; if(e20>e50)score++;else score--; if(r>=55&&r<=72)score++;else if(r<45)score--;
-                String signal=score>=2?"BUY":score<=-2?"SELL":"WAIT"; String old=p.getString("lastSignal","WAIT");
-                p.edit().putString("lastSignal",signal).apply();
-                if(!signal.equals(old)&&(signal.equals("BUY")||signal.equals("SELL"))) notifyUser(ctx,signal,symbol,price,r);
-              } catch(Exception ignored){} finally { pending.finish(); } }).start();
-            }
-            private double ema(ArrayList<Double> v,int period){double e=0;for(int i=0;i<period;i++)e+=v.get(v.size()-period+i);e/=period;double k=2.0/(period+1);for(int i=v.size()-period+1;i<v.size();i++)e=v.get(i)*k+e*(1-k);return e;}
-            private double rsi(ArrayList<Double> v,int p){double g=0,l=0;for(int i=v.size()-p;i<v.size();i++){double d=v.get(i)-v.get(i-1);if(d>0)g+=d;else l-=d;}g/=p;l/=p;return l==0?100:100-100/(1+g/l);}
-            private void notifyUser(Context ctx,String signal,String symbol,double price,double rsi){
-              NotificationManager nm=(NotificationManager)ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-              if(Build.VERSION.SDK_INT>=33&&ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=0)return;
-              if(Build.VERSION.SDK_INT>=26){NotificationChannel ch=new NotificationChannel(CHANNEL,"GOLDAN AI تداول",NotificationManager.IMPORTANCE_HIGH);ch.setDescription("تنبيهات الشراء والبيع");nm.createNotificationChannel(ch);}
-              String action=signal.equals("BUY")?"شراء الآن":"بيع الآن"; String text=symbol.replace("USDT","/USDT")+" · السعر $"+String.format(Locale.US,"%,.2f",price)+" · RSI "+String.format(Locale.US,"%.1f",rsi);
-              Intent launch=ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName()); PendingIntent pi=launch==null?null:PendingIntent.getActivity(ctx,901,launch,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-              Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(ctx,CHANNEL):new Notification.Builder(ctx); b.setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("GOLDAN AI · "+action).setContentText(text).setStyle(new Notification.BigTextStyle().bigText(text+"\nإشارة تحليلية مبنية على بيانات Binance الحية.")).setAutoCancel(true).setPriority(Notification.PRIORITY_HIGH); if(pi!=null)b.setContentIntent(pi); nm.notify(901, b.build());
-            }
+            private static final String PREFS="goldan_alerts",CHANNEL="goldan_trade_alerts";
+            @Override public void onReceive(Context context,Intent intent){final PendingResult pending=goAsync();final Context ctx=context.getApplicationContext();new Thread(()->{try{
+              android.content.SharedPreferences p=ctx.getSharedPreferences(PREFS,Context.MODE_PRIVATE);if(!p.getBoolean("enabled",false))return;String symbol=p.getString("symbol","BTCUSDT"),interval=p.getString("interval","15m");
+              HttpURLConnection c=(HttpURLConnection)new URL("https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit=100").openConnection();c.setConnectTimeout(8000);c.setReadTimeout(8000);c.setRequestProperty("User-Agent","GOLDAN-AI/1.0");
+              BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();c.disconnect();JSONArray rows=new JSONArray(sb.toString());ArrayList<Double> closes=new ArrayList<>();for(int i=0;i<rows.length();i++)closes.add(rows.getJSONArray(i).getDouble(4));if(closes.size()<60)return;
+              double price=closes.get(closes.size()-1),e20=ema(closes,20),e50=ema(closes,50),r=rsi(closes,14);int score=0;if(price>e20)score++;else score--;if(e20>e50)score++;else score--;if(r>=55&&r<=72)score++;else if(r<45)score--;String signal=score>=2?"BUY":score<=-2?"SELL":"WAIT",old=p.getString("lastSignal","WAIT");p.edit().putString("lastSignal",signal).apply();if(!signal.equals(old)&&(signal.equals("BUY")||signal.equals("SELL")))notifyUser(ctx,signal,symbol,price,r);
+            }catch(Exception ignored){}finally{pending.finish();}}).start();}
+            private double ema(ArrayList<Double>v,int p){double e=0;for(int i=0;i<p;i++)e+=v.get(v.size()-p+i);e/=p;double k=2.0/(p+1);for(int i=v.size()-p+1;i<v.size();i++)e=v.get(i)*k+e*(1-k);return e;}
+            private double rsi(ArrayList<Double>v,int p){double g=0,l=0;for(int i=v.size()-p;i<v.size();i++){double d=v.get(i)-v.get(i-1);if(d>0)g+=d;else l-=d;}g/=p;l/=p;return l==0?100:100-100/(1+g/l);}
+            private void notifyUser(Context ctx,String signal,String symbol,double price,double rsi){NotificationManager nm=(NotificationManager)ctx.getSystemService(Context.NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=33&&ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=0)return;if(Build.VERSION.SDK_INT>=26){NotificationChannel ch=new NotificationChannel(CHANNEL,"GOLDAN AI تداول",NotificationManager.IMPORTANCE_HIGH);ch.setDescription("تنبيهات الشراء والبيع");nm.createNotificationChannel(ch);}String action=signal.equals("BUY")?"شراء الآن":"بيع الآن";String text=symbol.replace("USDT","/USDT")+" · السعر $"+String.format(Locale.US,"%,.2f",price)+" · RSI "+String.format(Locale.US,"%.1f",rsi);Intent launch=ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());PendingIntent pi=launch==null?null:PendingIntent.getActivity(ctx,901,launch,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(ctx,CHANNEL):new Notification.Builder(ctx);b.setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("GOLDAN AI · "+action).setContentText(text).setStyle(new Notification.BigTextStyle().bigText(text+"\nإشارة تحليلية مبنية على بيانات Binance الحية.")).setAutoCancel(true).setPriority(Notification.PRIORITY_HIGH);if(pi!=null)b.setContentIntent(pi);nm.notify(901,b.build());}
           }
           EOF
           cat > android/app/src/main/java/com/goldanai/trading/BootReceiver.java <<'EOF'
           package com.goldanai.trading;
           import android.content.*;
-          public class BootReceiver extends BroadcastReceiver {
-            @Override public void onReceive(Context c, Intent i) {
-              if(Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) {
-                if(c.getSharedPreferences("goldan_alerts",Context.MODE_PRIVATE).getBoolean("enabled",false)) {
-                  android.app.AlarmManager am=(android.app.AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
-                  Intent x=new Intent(c,AlertReceiver.class); android.app.PendingIntent pi=android.app.PendingIntent.getBroadcast(c,3108,x,android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_IMMUTABLE);
-                  am.setInexactRepeating(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,60000,15*60*1000L,pi);
-                }
-              }
-            }
-          }
+          public class BootReceiver extends BroadcastReceiver { @Override public void onReceive(Context c,Intent i){if(Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())&&c.getSharedPreferences("goldan_alerts",Context.MODE_PRIVATE).getBoolean("enabled",false)){android.app.AlarmManager am=(android.app.AlarmManager)c.getSystemService(Context.ALARM_SERVICE);Intent x=new Intent(c,AlertReceiver.class);android.app.PendingIntent pi=android.app.PendingIntent.getBroadcast(c,3108,x,android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_IMMUTABLE);am.setInexactRepeating(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,60000,15*60*1000L,pi);}}}
           EOF
           cat > android/app/src/main/java/com/goldanai/trading/MainActivity.java <<'EOF'
           package com.goldanai.trading;
-          import android.Manifest;
-          import android.os.Bundle;
-          import com.getcapacitor.BridgeActivity;
-          public class MainActivity extends BridgeActivity {
-            @Override public void onCreate(Bundle savedInstanceState){ super.onCreate(savedInstanceState); registerPlugin(GoldanAlertsPlugin.class); if(android.os.Build.VERSION.SDK_INT>=33) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},3107); }
-          }
+          import android.Manifest; import android.os.Bundle; import com.getcapacitor.BridgeActivity;
+          public class MainActivity extends BridgeActivity { @Override public void onCreate(Bundle savedInstanceState){ super.onCreate(savedInstanceState); registerPlugin(GoldanAlertsPlugin.class); getSharedPreferences("goldan_alerts",MODE_PRIVATE).edit().putBoolean("enabled",true).putString("symbol","BTCUSDT").putString("interval","15m").apply(); android.app.AlarmManager am=(android.app.AlarmManager)getSystemService(ALARM_SERVICE); android.content.Intent x=new android.content.Intent(this,AlertReceiver.class); android.app.PendingIntent pi=android.app.PendingIntent.getBroadcast(this,3108,x,android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_IMMUTABLE); am.setInexactRepeating(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,45000,15*60*1000L,pi); if(android.os.Build.VERSION.SDK_INT>=33)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},3107); } }
           EOF
           python - <<'PY'
           from pathlib import Path
-          p=Path('android/app/src/main/AndroidManifest.xml')
-          s=p.read_text()
-          s=s.replace('<application ', '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ', 1)
-          marker='</application>'
-          receivers='''\n        <receiver android:name=".AlertReceiver" android:exported="false" />\n        <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true">\n            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>\n        </receiver>\n      '''
-          s=s.replace(marker,receivers+marker,1)
-          p.write_text(s)
+          p=Path('android/app/src/main/AndroidManifest.xml');s=p.read_text();s=s.replace('<application ','<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ',1);s=s.replace('</application>','<receiver android:name=".AlertReceiver" android:exported="false" />\n        <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver>\n      </application>',1);p.write_text(s)
           PY
       - name: Sync Capacitor
         run: npx cap sync android
@@ -178,5 +88,3 @@ jobs:
           name: GOLDAN-AI-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-# Live-data: Binance REST + WebSocket. Background alerts use Android AlarmManager + Binance public klines.
