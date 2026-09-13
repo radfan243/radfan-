@@ -27,7 +27,7 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          cp index.html app.js styles.css premium-analysis.js reading.html records.html settings.html phase2.html ai-lab.html www/
+          cp index.html app.js styles.css premium-analysis.js interactive-chart.js reading.html records.html settings.html phase2.html ai-lab.html www/
       - name: Add Android platform
         run: npx cap add android
       - name: Apply GOLDAN AI launcher icon only
@@ -69,4 +69,4 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-# Live-data build: app.js now uses Binance REST + WebSocket market data.
+# Live-data build: app.js uses Binance REST + WebSocket market data.
