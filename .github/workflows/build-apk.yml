@@ -25,7 +25,7 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          cp index.html app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js reading.html records.html settings.html phase2.html ai-lab.html www/
+          cp index.html app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js prediction-candles.js native-alert-bridge.js reading.html records.html settings.html phase2.html ai-lab.html www/
       - name: Add Android platform
         run: npx cap add android
       - name: Add GOLDAN AI background alert engine
@@ -47,13 +47,12 @@ jobs:
           EOF
           cat > android/app/src/main/java/com/goldanai/trading/AlertReceiver.java <<'EOF'
           package com.goldanai.trading;
-          import android.app.*; import android.content.*; import android.os.*; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
+          import android.app.*; import android.content.*; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
           public class AlertReceiver extends BroadcastReceiver {
             private static final String PREFS="goldan_alerts",CHANNEL="goldan_trade_alerts";
             @Override public void onReceive(Context context,Intent intent){final PendingResult pending=goAsync();final Context ctx=context.getApplicationContext();new Thread(()->{try{
               android.content.SharedPreferences p=ctx.getSharedPreferences(PREFS,Context.MODE_PRIVATE);if(!p.getBoolean("enabled",false))return;String symbol=p.getString("symbol","BTCUSDT"),interval=p.getString("interval","15m");
-              HttpURLConnection c=(HttpURLConnection)new URL("https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit=100").openConnection();c.setConnectTimeout(8000);c.setReadTimeout(8000);c.setRequestProperty("User-Agent","GOLDAN-AI/1.0");
-              BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();c.disconnect();JSONArray rows=new JSONArray(sb.toString());ArrayList<Double> closes=new ArrayList<>();for(int i=0;i<rows.length();i++)closes.add(rows.getJSONArray(i).getDouble(4));if(closes.size()<60)return;
+              HttpURLConnection c=(HttpURLConnection)new URL("https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit=100").openConnection();c.setConnectTimeout(8000);c.setReadTimeout(8000);c.setRequestProperty("User-Agent","GOLDAN-AI/1.0");BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();c.disconnect();JSONArray rows=new JSONArray(sb.toString());ArrayList<Double> closes=new ArrayList<>();for(int i=0;i<rows.length();i++)closes.add(rows.getJSONArray(i).getDouble(4));if(closes.size()<60)return;
               double price=closes.get(closes.size()-1),e20=ema(closes,20),e50=ema(closes,50),r=rsi(closes,14);int score=0;if(price>e20)score++;else score--;if(e20>e50)score++;else score--;if(r>=55&&r<=72)score++;else if(r<45)score--;String signal=score>=2?"BUY":score<=-2?"SELL":"WAIT",old=p.getString("lastSignal","WAIT");p.edit().putString("lastSignal",signal).apply();if(!signal.equals(old)&&(signal.equals("BUY")||signal.equals("SELL")))notifyUser(ctx,signal,symbol,price,r);
             }catch(Exception ignored){}finally{pending.finish();}}).start();}
             private double ema(ArrayList<Double>v,int p){double e=0;for(int i=0;i<p;i++)e+=v.get(v.size()-p+i);e/=p;double k=2.0/(p+1);for(int i=v.size()-p+1;i<v.size();i++)e=v.get(i)*k+e*(1-k);return e;}
@@ -78,7 +77,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Validate web JavaScript
-        run: node --check app.js && node --check exchange-ui.js && node --check interactive-chart.js
+        run: node --check app.js && node --check exchange-ui.js && node --check interactive-chart.js && node --check prediction-candles.js && node --check native-alert-bridge.js
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
