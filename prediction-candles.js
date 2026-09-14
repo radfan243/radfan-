@@ -1,59 +1,21 @@
-/* GOLDAN AI — Future candle projection (non-repainting visual estimate). */
+/* GOLDAN AI — Forecast visualization from the same live Binance candles used by the analyzer. */
 (function(){
   const style=document.createElement('style');
   style.textContent=`
-    .prediction-zone{position:absolute;right:0;top:0;width:118px;height:100%;z-index:5;pointer-events:none;display:none;background:linear-gradient(90deg,transparent,rgba(5,7,13,.72) 18%,rgba(5,7,13,.96));border-left:1px solid rgba(226,185,79,.16)}
+    .prediction-zone{position:absolute;right:0;top:0;width:150px;height:100%;z-index:5;pointer-events:none;display:none;background:linear-gradient(90deg,transparent,rgba(5,7,13,.76) 16%,rgba(5,7,13,.97));border-left:1px solid rgba(226,185,79,.22)}
     .prediction-zone canvas{width:100%;height:100%;display:block}
-    .prediction-tag{position:absolute;top:7px;right:7px;padding:3px 7px;border-radius:7px;background:rgba(8,10,15,.9);border:1px solid rgba(226,185,79,.38);color:#d8bd72;font:700 8px Cairo,sans-serif;white-space:nowrap}
-  `;
-  document.head.appendChild(style);
+    .prediction-tag{position:absolute;top:8px;right:8px;padding:4px 8px;border-radius:8px;background:rgba(8,10,15,.94);font:800 9px Cairo,sans-serif;white-space:nowrap}
+  `;document.head.appendChild(style);
   let zone,cv,ctx,lastKey='';
-  function setup(){
-    const chart=document.getElementById('chart');
-    if(!chart||zone)return;
-    const panel=chart.closest('.chart-panel'); if(!panel)return;
-    if(getComputedStyle(panel).position==='static')panel.style.position='relative';
-    zone=document.createElement('div');zone.className='prediction-zone';
-    cv=document.createElement('canvas');zone.appendChild(cv);
-    const tag=document.createElement('div');tag.className='prediction-tag';tag.textContent='توقع · 1–2 شمعة';zone.appendChild(tag);
-    panel.appendChild(zone);resize();
-    window.addEventListener('resize',resize);
-  }
-  function resize(){if(!zone||!cv)return;const d=devicePixelRatio||1;cv.width=zone.clientWidth*d;cv.height=zone.clientHeight*d;ctx=cv.getContext('2d');ctx.setTransform(d,0,0,d,0,0);}
-  function ema(v,p){if(v.length<p)return null;let e=v.slice(0,p).reduce((a,b)=>a+b,0)/p,k=2/(p+1);for(let i=p;i<v.length;i++)e=v[i]*k+e*(1-k);return e}
+  function setup(){const chart=document.getElementById('chart');if(!chart||zone)return;const panel=chart.closest('.chart-panel');if(!panel)return;if(getComputedStyle(panel).position==='static')panel.style.position='relative';zone=document.createElement('div');zone.className='prediction-zone';cv=document.createElement('canvas');zone.appendChild(cv);const tag=document.createElement('div');tag.className='prediction-tag';tag.id='predictionTag';zone.appendChild(tag);panel.appendChild(zone);resize();window.addEventListener('resize',resize)}
+  function resize(){if(!zone||!cv)return;const d=devicePixelRatio||1;cv.width=Math.max(1,zone.clientWidth*d);cv.height=Math.max(1,zone.clientHeight*d);ctx=cv.getContext('2d');ctx.setTransform(d,0,0,d,0,0)}
+  function ema(v,p){if(v.length<p)return null;const k=2/(p+1);let e=v.slice(0,p).reduce((a,b)=>a+b,0)/p;for(let i=p;i<v.length;i++)e=v[i]*k+e*(1-k);return e}
   function atr(k,p=14){if(k.length<p+1)return 0;let tr=[];for(let i=1;i<k.length;i++)tr.push(Math.max(+k[i][2]-+k[i][3],Math.abs(+k[i][2]-+k[i-1][4]),Math.abs(+k[i][3]-+k[i-1][4])));let a=tr.slice(0,p).reduce((x,y)=>x+y,0)/p;for(let i=p;i<tr.length;i++)a=(a*(p-1)+tr[i])/p;return a}
-  function makeForecast(){
-    if(!window.state||!state.klines||state.klines.length<60)return null;
-    const k=state.klines.slice();
-    const closes=k.map(x=>+x[4]),vols=k.map(x=>+x[5]),last=closes.at(-1),e20=ema(closes,20),e50=ema(closes,50),a=atr(k,14)||last*.003;
-    const n=closes.length;const m=Math.max(3,Math.min(12,n-1));const mom=(last-closes[n-1-m])/closes[n-1-m];
-    const slope=(e20-e50)/(a||1);let bias=Math.max(-1,Math.min(1,mom*7+slope*.018));
-    const avgVol=vols.slice(-20).reduce((x,y)=>x+y,0)/20;const volFactor=Math.max(.75,Math.min(1.25,(vols.at(-1)||avgVol)/(avgVol||1)));
-    const drift=Math.max(-a*.9,Math.min(a*.9,a*(bias*.42)*volFactor));
-    const make=(o,d,i)=>{const noise=a*(.22+.08*i);const c=o+d;const up=d>=0;return [o,up?o+noise*.35:o+noise*.18,up?c+noise*.22:c-noise*.22,up?o-noise*.20:o-noise*.35,c]};
-    const p1=make(last,drift,0),p2=make(p1[4],drift*(.72+bias*.18),1);
-    return {candles:[p1,p2],bull:bias>=0,atr:a,bias,base:last};
+  function forecast(){if(!window.state||!state.klines||state.klines.length<60)return null;const base=state.liveKline?[...state.klines,state.liveKline]:state.klines.slice();const closes=base.map(x=>+x[4]),vols=base.map(x=>+x[5]),last=closes.at(-1),e20=ema(closes,20),e50=ema(closes,50),a=atr(base)||last*.003;const m=Math.max(4,Math.min(12,closes.length-1));const mom=(last-closes[closes.length-1-m])/closes[closes.length-1-m];let bias=Math.max(-1,Math.min(1,mom*8+(e20-e50)/(a||1)*.035));const avg=vols.slice(-20).reduce((x,y)=>x+y,0)/20;const vf=Math.max(.75,Math.min(1.25,(vols.at(-1)||avg)/(avg||1)));const drift=Math.max(-a*.9,Math.min(a*.9,a*.42*bias*vf));const make=(o,d,i)=>{const n=a*(.18+.07*i),c=o+d;return[o,Math.max(o,c)+n*.25,Math.min(o,c)-n*.25,c]};const p1=make(last,drift,0),p2=make(p1[3],drift*(.72+bias*.18),1);return{candles:[p1,p2],bull:bias>=0,atr:a,bias,base:last}}
+  function draw(){setup();if(!zone)return;const f=forecast();if(!f){zone.style.display='none';return}const key=[state.symbol,state.interval,state.klines.length,state.liveKline?.[4],f.bias.toFixed(3)].join('|');if(key===lastKey&&zone.style.display==='block')return;lastKey=key;resize();zone.style.display='block';const w=zone.clientWidth,h=zone.clientHeight;ctx.clearRect(0,0,w,h);const prices=[f.base,...f.candles.flatMap(x=>x.slice(0,4))],hi=Math.max(...prices),lo=Math.min(...prices),range=Math.max(hi-lo,f.atr*.8);const top=hi+range*.25,bottom=lo-range*.25,span=top-bottom,y=v=>12+(top-v)/span*(h-44);const bull=f.bull;const strong=Math.abs(f.bias)>=.35;const main=bull?'#43dfa0':'#ff637d',fill=bull?'rgba(67,223,160,.30)':'rgba(255,99,125,.30)';const tag=document.getElementById('predictionTag');if(tag){tag.textContent=bull?'توقع ↑ شراء':'توقع ↓ بيع';tag.style.color=main;tag.style.border=`1px solid ${main}`;tag.style.boxShadow=`0 0 14px ${fill}`}
+    const xs=[w-88,w-45];f.candles.forEach((x,i)=>{const o=x[0],hh=x[1],ll=x[2],c=x[3],cx=xs[i],bw=20;ctx.strokeStyle=main;ctx.fillStyle=fill;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,y(hh));ctx.lineTo(cx,y(ll));ctx.stroke();const t=y(Math.max(o,c)),b=y(Math.min(o,c));ctx.fillRect(cx-bw/2,t,bw,Math.max(8,b-t));ctx.strokeRect(cx-bw/2,t,bw,Math.max(8,b-t));ctx.strokeStyle=main;ctx.lineWidth=1;ctx.strokeRect(cx-bw/2-3,t-3,bw+6,Math.max(14,b-t+6));});
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(216,189,114,.65)';ctx.beginPath();ctx.moveTo(5,y(f.base));ctx.lineTo(w-5,y(f.base));ctx.stroke();ctx.setLineDash([]);ctx.font='800 8px Cairo,sans-serif';ctx.fillStyle='#9ba2ad';ctx.fillText(strong?'توقع أقوى':'توقع ضعيف',7,h-18);ctx.fillText('مربع = الشمعة المتوقعة',7,h-7);
   }
-  function draw(){
-    setup(); if(!zone)return;
-    const f=makeForecast(); if(!f){zone.style.display='none';return;}
-    const key=[state.symbol,state.interval,state.klines.length,state.klines.at(-1)?.[4]].join('|');
-    if(key===lastKey&&zone.style.display==='block')return; lastKey=key;
-    resize();zone.style.display='block';
-    const w=zone.clientWidth,h=zone.clientHeight;ctx.clearRect(0,0,w,h);
-    const prices=[f.base,...f.candles.flatMap(x=>x.slice(1,4))];let hi=Math.max(...prices),lo=Math.min(...prices),range=hi-lo||f.atr||1;hi+=range*.25;lo-=range*.25;range=hi-lo;
-    const y=v=>12+(hi-v)/range*(h-42), baseX=w-78, gap=37;
-    const colors=f.bull?['rgba(67,223,160,.34)','rgba(67,223,160,.72)']:['rgba(255,99,125,.34)','rgba(255,99,125,.72)'];
-    f.candles.forEach((x,i)=>{const [o,hh,ll,c]=x,cx=baseX+i*gap;ctx.strokeStyle=colors[1];ctx.fillStyle=colors[0];ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx,y(hh));ctx.lineTo(cx,y(ll));ctx.stroke();const top=y(Math.max(o,c)),bottom=y(Math.min(o,c));ctx.fillRect(cx-9,top,18,Math.max(6,bottom-top));ctx.strokeStyle=colors[1];ctx.strokeRect(cx-9,top,18,Math.max(6,bottom-top));});
-    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(216,189,114,.65)';ctx.beginPath();ctx.moveTo(5,y(f.base));ctx.lineTo(w-5,y(f.base));ctx.stroke();ctx.setLineDash([]);
-    ctx.font='8px Cairo,sans-serif';ctx.fillStyle='#9ba2ad';ctx.fillText(f.bull?'ميل متوقع ↑':'ميل متوقع ↓',7,h-18);
-  }
-  function hook(){
-    if(!window.drawChart||window.drawChart.__predictionWrapped)return;
-    const original=window.drawChart;
-    function wrapped(){original.apply(this,arguments);setTimeout(draw,0)}
-    wrapped.__predictionWrapped=true;window.drawChart=wrapped;
-  }
-  const timer=setInterval(()=>{if(window.drawChart){hook();draw();}},500);
-  setTimeout(()=>{clearInterval(timer);hook();draw()},5000);
+  function hook(){if(!window.drawChart||window.drawChart.__predictionWrapped)return;const original=window.drawChart;function wrapped(){original.apply(this,arguments);setTimeout(draw,0)}wrapped.__predictionWrapped=true;window.drawChart=wrapped}
+  const timer=setInterval(()=>{if(window.drawChart){hook();draw()}},400);setTimeout(()=>{clearInterval(timer);hook();draw()},5000);
 })();
