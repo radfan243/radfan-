@@ -47,7 +47,7 @@ jobs:
           EOF
           cat > android/app/src/main/java/com/goldanai/trading/AlertReceiver.java <<'EOF'
           package com.goldanai.trading;
-          import android.app.*; import android.content.*; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
+          import android.app.*; import android.content.*; import android.os.Build; import org.json.*; import java.io.*; import java.net.*; import java.util.*;
           public class AlertReceiver extends BroadcastReceiver {
             private static final String PREFS="goldan_alerts",CHANNEL="goldan_trade_alerts";
             @Override public void onReceive(Context context,Intent intent){final PendingResult pending=goAsync();final Context ctx=context.getApplicationContext();new Thread(()->{try{
