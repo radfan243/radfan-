@@ -1,69 +1,87 @@
-/* GOLDAN AI — Interactive Binance-style chart. Keeps the existing Binance data/analysis untouched. */
+/* GOLDAN AI — clean live chart + single blue trend line + trade plan + free chart-image analyzer */
 (function(){
   const css=`
   .chart-panel{position:relative;overflow:hidden}
   .chart-panel.chart-fullscreen{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;padding:12px;background:#05070d;overflow:auto}
-  .chart-fullscreen .chart-head{position:sticky;top:0;z-index:2;background:#05070d;padding:4px 0 8px}
-  .chart-fullscreen canvas{height:calc(100vh - 145px)!important;min-height:360px}
-  .chart-tools{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
-  .chart-tool{border:1px solid #302817;background:#0d0f13;color:#c9aa5b;border-radius:9px;padding:6px 9px;font-family:inherit;font-size:9px;cursor:pointer}
-  .chart-hint{color:#646b78;font-size:8px;margin-right:auto}
+  .chart-fullscreen canvas{height:calc(100vh - 150px)!important;min-height:360px}
   #chart{touch-action:none;cursor:grab}
   #chart.chart-dragging{cursor:grabbing}
+  .chart-tools{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .chart-tool{border:1px solid #243f75;background:#09111f;color:#6fb2ff;border-radius:9px;padding:7px 10px;font-family:inherit;font-size:9px;cursor:pointer}
+  .chart-tool:hover{background:#0d1a2e}
+  .chart-hint{color:#646b78;font-size:8px;margin-right:auto}
+  .goldan-plan-overlay{position:absolute;left:12px;top:14px;z-index:3;display:flex;gap:5px;flex-wrap:wrap;pointer-events:none}
+  .goldan-plan-chip{background:rgba(5,9,16,.9);border:1px solid #203b67;border-radius:8px;padding:4px 7px;color:#a8c9f5;font-size:8px}
+  .goldan-ai-modal{position:fixed;inset:0;z-index:10050;background:rgba(2,5,10,.82);display:none;align-items:center;justify-content:center;padding:14px}
+  .goldan-ai-modal.open{display:flex}
+  .goldan-ai-box{width:min(680px,100%);max-height:92vh;overflow:auto;background:#080d16;border:1px solid #23416d;border-radius:20px;padding:18px;box-shadow:0 24px 80px #000b;color:#eaf2ff}
+  .goldan-ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .goldan-ai-head h3{margin:0;font-size:18px}.goldan-ai-head small{color:#74839a}
+  .goldan-ai-close{border:1px solid #263b59;background:#0c1421;color:#b9c8dc;border-radius:9px;padding:6px 10px}
+  .goldan-ai-drop{margin-top:14px;border:1px dashed #31527f;border-radius:14px;padding:18px;text-align:center;color:#93a7c2}
+  .goldan-ai-drop input{display:block;width:100%;margin-top:10px}
+  .goldan-ai-preview{display:none;width:100%;max-height:280px;object-fit:contain;border-radius:12px;margin-top:12px;background:#03060b}
+  .goldan-ai-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+  .goldan-ai-btn{border:1px solid #315a92;background:#0c1b31;color:#9ac7ff;border-radius:9px;padding:8px 12px;font-family:inherit;font-size:9px}
+  .goldan-ai-result{margin-top:13px;border:1px solid #1d304b;border-radius:13px;padding:13px;background:#0a111c;line-height:1.9;font-size:10px}
+  .goldan-ai-result b{color:#8dc1ff}.goldan-ai-warning{color:#7e8da1;font-size:8px;margin-top:10px;line-height:1.8}
   `;
   const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
-  const c=()=>document.getElementById('chart');
-  const panel=()=>c()&&c().closest('.chart-panel');
-  const view={start:null,count:80,yShift:0,drag:false,lastX:0,lastY:0,pinch:0};
-  function data(){return state.liveKline?[...state.klines.slice(0,-1),state.liveKline]:state.klines.slice();}
-  function clampView(n){view.count=Math.max(25,Math.min(180,view.count));view.start=Math.max(0,Math.min(Math.max(0,n-view.count),view.start==null?Math.max(0,n-view.count):view.start));}
-  function sma(vals,p){const out=Array(vals.length).fill(null);let sum=0;for(let i=0;i<vals.length;i++){sum+=vals[i];if(i>=p)sum-=vals[i-p];if(i>=p-1)out[i]=sum/p}return out}
-  function boll(vals,p=20,m=2){const mid=sma(vals,p),up=Array(vals.length).fill(null),dn=Array(vals.length).fill(null);for(let i=p-1;i<vals.length;i++){let s=0;for(let j=i-p+1;j<=i;j++)s+=(vals[j]-mid[i])**2;const sd=Math.sqrt(s/p);up[i]=mid[i]+m*sd;dn[i]=mid[i]-m*sd}return{mid,up,dn}}
-  function drawLine(ctx,arr,first,step,y,color,width,w,top,bottom,min,max){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();let started=false;for(let i=first;i<Math.min(arr.length,first+view.count);i++){const v=arr[i];if(v==null)continue;const x=8+(i-first+0.5)*step;const yy=top+(max-v)/(max-min)*(bottom-top);if(!started){ctx.moveTo(x,yy);started=true}else ctx.lineTo(x,yy)}if(started)ctx.stroke()}
-  function nicePrice(v){if(v>=10000)return fmt(v,2);if(v>=100)return fmt(v,2);if(v>=1)return fmt(v,4);return fmt(v,6)}
+  const c=()=>document.getElementById('chart'), panel=()=>c()&&c().closest('.chart-panel');
+  const view={start:null,count:90,yShift:0,drag:false,lastX:0,lastY:0};
+  function data(){return state.liveKline?[...state.klines.slice(0,-1),state.liveKline]:state.klines.slice()}
+  function sma(v,p){const o=Array(v.length).fill(null);let s=0;for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}return o}
+  function clamp(n){view.count=Math.max(25,Math.min(180,view.count));view.start=Math.max(0,Math.min(Math.max(0,n-view.count),view.start==null?Math.max(0,n-view.count):view.start))}
+  function fmtP(v){return v>=10000?fmt(v,2):v>=100?fmt(v,2):v>=1?fmt(v,4):fmt(v,6)}
+  function drawLine(ctx,arr,first,step,y,top,bottom,lo,hi){
+    ctx.strokeStyle='#2f8cff';ctx.lineWidth=2.4;ctx.beginPath();let started=false;
+    for(let i=first;i<Math.min(arr.length,first+view.count);i++){const v=arr[i];if(v==null)continue;const x=8+(i-first+.5)*step,yy=y(v);if(!started){ctx.moveTo(x,yy);started=true}else ctx.lineTo(x,yy)}
+    if(started)ctx.stroke();
+  }
+  function plan(){const p=state.lastPrice||(+state.klines.at(-1)?.[4]||0),a=typeof analyze==='function'?analyze(data()):null;if(!p||!a)return null;const dir=a.signal==='شراء'?1:a.signal==='بيع'?-1:0;const atr=a.atr||p*.003;return{signal:a.signal,entry:p,stop:dir?p-dir*atr*1.4:null,tp1:dir?p+dir*atr*2:null,tp2:dir?p+dir*atr*3.2:null,score:a.score}}
   function draw(){
-    const canvas=c();if(!canvas||!state||!state.klines.length)return;
-    const ctx=canvas.getContext('2d');const dpr=window.devicePixelRatio||1;const w=Math.max(1,canvas.clientWidth);const h=Math.max(320,canvas.clientHeight||300);canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-    const all=data();const n=all.length;clampView(n);const first=view.start,last=Math.min(n,first+view.count),k=all.slice(first,last);if(k.length<2)return;
-    const closes=all.map(x=>+x[4]),ma7=sma(closes,7),ma25=sma(closes,25),ma99=sma(closes,99),bb=boll(closes,20,2);
-    const visible=k;let hi=Math.max(...visible.map(x=>+x[2])),lo=Math.min(...visible.map(x=>+x[3]));
-    const ind=[];[ma7,ma25,ma99,bb.up,bb.mid,bb.dn].forEach(a=>{for(let i=first;i<last;i++)if(a[i]!=null)ind.push(a[i])});if(ind.length){hi=Math.max(hi,...ind);lo=Math.min(lo,...ind)}
-    const base=hi-lo||1,extra=base*.07;hi+=extra;lo-=extra;const shift=(hi-lo)*view.yShift;hi+=shift;lo+=shift;
-    const left=8,right=62,top=16,bottom=h-62,range=hi-lo,cw=(w-left-right)/k.length,priceY=v=>top+(hi-v)/range*(bottom-top-40),vh=Math.max(...k.map(x=>+x[5]))||1;
-    ctx.font='10px Cairo';ctx.textAlign='left';
-    for(let j=0;j<6;j++){const y=top+j*(bottom-top)/5;ctx.strokeStyle='#1c2025';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();const val=hi-j*range/5;ctx.fillStyle='#747b86';ctx.fillText('$'+nicePrice(val),w-right+5,y+3)}
-    for(let j=0;j<7;j++){const x=left+j*(w-left-right)/6;ctx.strokeStyle='#15191e';ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke()}
-    ctx.fillStyle='#6f7682';ctx.fillText(state.interval||'',left,h-9);
-    const step=cw;const y=priceY;
-    // Volume area
-    k.forEach((x,i)=>{const bh=(+x[5]/vh)*32;ctx.globalAlpha=.20;ctx.fillStyle=(+x[4]>=+x[1])?'#43dfa0':'#ff637d';ctx.fillRect(left+i*step+step*.12,h-43-bh,Math.max(1,step*.76),bh);ctx.globalAlpha=1});
-    // Bollinger Bands
-    drawLine(ctx,bb.up,first,step,y,'#e2b94f',1,w,top,bottom,lo,hi);drawLine(ctx,bb.mid,first,step,y,'#e05cc7',1.2,w,top,bottom,lo,hi);drawLine(ctx,bb.dn,first,step,y,'#e2b94f',1,w,top,bottom,lo,hi);
-    // Moving averages similar to Binance
-    drawLine(ctx,ma7,first,step,y,'#f0c93d',1.3,w,top,bottom,lo,hi);drawLine(ctx,ma25,first,step,y,'#e15bc6',1.25,w,top,bottom,lo,hi);drawLine(ctx,ma99,first,step,y,'#806bb7',1.3,w,top,bottom,lo,hi);
-    // Candles
-    k.forEach((x,i)=>{const o=+x[1],hh=+x[2],ll=+x[3],cl=+x[4],cx=left+i*step+step/2,up=cl>=o,col=up?'#43dfa0':'#ff637d';ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx,y(hh));ctx.lineTo(cx,y(ll));ctx.stroke();const yo=y(o),yc=y(cl);ctx.fillRect(cx-Math.max(2,step*.30)/2,Math.min(yo,yc),Math.max(2,step*.30),Math.max(2,Math.abs(yo-yc))) });
-    // Live/current price line and right label
-    const current=state.lastPrice!=null?+state.lastPrice:+all[n-1][4];const py=y(current);ctx.setLineDash([5,4]);ctx.strokeStyle='#e5e8ee';ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(w-right,py);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.fillStyle=current>+all[n-1][1]?'#43dfa0':'#ff637d';ctx.fillRect(w-right+1,py-10,right-2,20);ctx.fillStyle='#05070d';ctx.font='bold 9px Cairo';ctx.fillText(nicePrice(current),w-right+6,py+3);
-    // Last candle marker
-    ctx.fillStyle='#dfe4eb';ctx.beginPath();ctx.arc(left+(k.length-.5)*step,y(+k[k.length-1][4]),3,0,Math.PI*2);ctx.fill();
-    // Legend
-    ctx.font='8px Cairo';ctx.fillStyle='#747b86';ctx.fillText('MA7',left,h-47);ctx.fillText('MA25',left+38,h-47);ctx.fillText('MA99',left+82,h-47);ctx.fillText('BOLL',left+126,h-47);ctx.fillText('LIVE PRICE',left+166,h-47);ctx.fillText(`${k.length} شمعة · اسحب للتحريك · قرّب/بعّد`,left,h-27);
+    const canvas=c();if(!canvas||!state||!state.klines.length)return;const ctx=canvas.getContext('2d'),dpr=devicePixelRatio||1,w=Math.max(1,canvas.clientWidth),h=Math.max(320,canvas.clientHeight||320);
+    canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const all=data(),n=all.length;clamp(n);const first=view.start,last=Math.min(n,first+view.count),k=all.slice(first,last);if(k.length<2)return;
+    const closes=all.map(x=>+x[4]),trend=sma(closes,21);let hi=Math.max(...k.map(x=>+x[2])),lo=Math.min(...k.map(x=>+x[3]));
+    for(let i=first;i<last;i++)if(trend[i]!=null){hi=Math.max(hi,trend[i]);lo=Math.min(lo,trend[i])}
+    const extra=(hi-lo||1)*.08;hi+=extra;lo-=extra;const left=8,right=62,top=16,bottom=h-58,range=hi-lo,cw=(w-left-right)/k.length,y=v=>top+(hi-v)/range*(bottom-top-34);
+    ctx.font='10px Cairo';
+    for(let j=0;j<6;j++){const yy=top+j*(bottom-top)/5;ctx.strokeStyle='#171c23';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.fillStyle='#707887';ctx.fillText('$'+fmtP(hi-j*range/5),w-right+5,yy+3)}
+    const vh=Math.max(...k.map(x=>+x[5]))||1;
+    k.forEach((x,i)=>{const o=+x[1],hh=+x[2],ll=+x[3],cl=+x[4],cx=left+i*cw+cw/2,up=cl>=o,col=up?'#43dfa0':'#ff637d';ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx,y(hh));ctx.lineTo(cx,y(ll));ctx.stroke();ctx.fillRect(cx-Math.max(2,cw*.56)/2,Math.min(y(o),y(cl)),Math.max(2,cw*.56),Math.max(2,Math.abs(y(o)-y(cl))));const bh=(+x[5]/vh)*28;ctx.globalAlpha=.18;ctx.fillRect(cx-cw*.28,h-39-bh,Math.max(2,cw*.56),bh);ctx.globalAlpha=1});
+    // ONE indicator only: live adaptive blue trend line
+    drawLine(ctx,trend,first,cw,y,top,bottom,lo,hi);
+    const current=state.lastPrice||+all[n-1][4],py=y(current);ctx.setLineDash([5,4]);ctx.strokeStyle='#8a95a5';ctx.globalAlpha=.45;ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(w-right,py);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    ctx.fillStyle='#dce8f8';ctx.beginPath();ctx.arc(left+(k.length-.5)*cw,y(+k[k.length-1][4]),3.5,0,Math.PI*2);ctx.fill();
+    const pl=plan();if(pl&&pl.signal!=='انتظار'){const vals=[['ENTRY',pl.entry],['SL',pl.stop],['TP1',pl.tp1],['TP2',pl.tp2]];ctx.font='8px Cairo';vals.forEach((q,idx)=>{if(q[1]==null)return;const yy=y(q[1]);ctx.setLineDash([3,4]);ctx.strokeStyle=idx===1?'#ff637d':idx>1?'#43dfa0':'#6faeff';ctx.globalAlpha=.6;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.fillStyle=idx===1?'#ff8295':idx>1?'#66e4aa':'#82b8ff';ctx.fillText(q[0]+' '+fmtP(q[1]),left+5,yy-3)})}
+    ctx.font='8px Cairo';ctx.fillStyle='#6f7886';ctx.fillText('● الأزرق = خط GOLDAN Trend · LIVE Binance',left,h-24);ctx.fillText(`${k.length} شمعة · اسحب للتحريك · قرّب/بعّد`,left,h-9);
   }
-  function fullscreen(){const p=panel();if(!p)return;p.classList.toggle('chart-fullscreen');const b=p.querySelector('.chart-full-btn');if(b)b.textContent=p.classList.contains('chart-fullscreen')?'✕':'⛶';setTimeout(draw,30)}
-  function setup(){const canvas=c(),p=panel();if(!canvas||!p||canvas.dataset.interactive)return;canvas.dataset.interactive='1';
-    const tools=document.createElement('div');tools.className='chart-tools';tools.innerHTML='<button class="chart-tool chart-full-btn" type="button">⛶ شاشة التحليل</button><button class="chart-tool" type="button" data-zoom="in">＋ تكبير</button><button class="chart-tool" type="button" data-zoom="out">－ تصغير</button><span class="chart-hint">اسحب يمين/يسار أو أعلى/أسفل · إصبعان للتكبير</span>';canvas.after(tools);
-    tools.querySelector('.chart-full-btn').onclick=fullscreen;tools.querySelector('[data-zoom="in"]').onclick=()=>{const n=state.klines.length;view.count=Math.max(25,Math.round(view.count*.8));view.start=Math.min(Math.max(0,n-view.count),view.start+Math.round(view.count*.1));draw()};tools.querySelector('[data-zoom="out"]').onclick=()=>{const n=state.klines.length;view.count=Math.min(180,Math.round(view.count*1.25));view.start=Math.max(0,Math.min(n-view.count,view.start));draw()};
-    canvas.addEventListener('wheel',e=>{e.preventDefault();const n=state.klines.length;view.count=Math.max(25,Math.min(180,Math.round(view.count*(e.deltaY>0?1.12:.89))));view.start=Math.max(0,Math.min(Math.max(0,n-view.count),view.start));draw()},{passive:false});
+  function refreshOverlay(){const p=panel();if(!p)return;let o=p.querySelector('.goldan-plan-overlay');if(!o){o=document.createElement('div');o.className='goldan-plan-overlay';p.appendChild(o)}const pl=plan();o.innerHTML=pl&&pl.signal!=='انتظار'?[[pl.signal==='شراء'?'شراء':'بيع',''],['دخول',fmtP(pl.entry)],['إيقاف',fmtP(pl.stop)],['هدف1',fmtP(pl.tp1)],['هدف2',fmtP(pl.tp2)]].map(x=>'<span class="goldan-plan-chip">'+x[0]+(x[1]?' '+x[1]:'')+'</span>').join(''):'<span class="goldan-plan-chip">لا توجد صفقة مؤكدة الآن · انتظار</span>'}
+  function fullscreen(){const p=panel();if(!p)return;p.classList.toggle('chart-fullscreen');const b=p.querySelector('.chart-full-btn');if(b)b.textContent=p.classList.contains('chart-fullscreen')?'✕ شاشة التحليل':'⛶ شاشة التحليل';setTimeout(()=>{draw();refreshOverlay()},30)}
+  function aiModal(){
+    if(document.querySelector('.goldan-ai-modal'))return;
+    const m=document.createElement('div');m.className='goldan-ai-modal';m.innerHTML='<div class="goldan-ai-box"><div class="goldan-ai-head"><div><h3>GOLDAN AI · تحليل الرسم بالصورة</h3><small>تحليل مجاني من الصورة + مطابقة مع بيانات السوق الحية</small></div><button class="goldan-ai-close">✕</button></div><div class="goldan-ai-drop">ارفع صورة الشارت (PNG/JPG)<input type="file" id="goldanImage" accept="image/png,image/jpeg"></div><img id="goldanPreview" class="goldan-ai-preview"><div class="goldan-ai-actions"><button class="goldan-ai-btn" id="goldanAnalyzeImage">تحليل الصورة الآن</button><button class="goldan-ai-btn" id="goldanAnalyzeLive">تحليل السوق الحالي</button></div><div id="goldanAIResult" class="goldan-ai-result">جاهز للتحليل.</div><div class="goldan-ai-warning">مهم: لا يوجد نظام تداول يضمن نتائج صحيحة 100%. الإشارة هنا مبنية على بيانات Binance العامة وقواعد قابلة للفحص، وتحليل الصورة بصري محلي. لا يتم إرسال صورتك إلى خادم خارجي.</div></div>';
+    document.body.appendChild(m);m.querySelector('.goldan-ai-close').onclick=()=>m.classList.remove('open');m.onclick=e=>{if(e.target===m)m.classList.remove('open')};
+    const file=m.querySelector('#goldanImage'),prev=m.querySelector('#goldanPreview');file.onchange=()=>{const f=file.files?.[0];if(!f)return;prev.src=URL.createObjectURL(f);prev.style.display='block'};
+    m.querySelector('#goldanAnalyzeLive').onclick=()=>runAIResult(m,false);m.querySelector('#goldanAnalyzeImage').onclick=()=>runAIResult(m,true);m.classList.add('open');
+  }
+  async function runAIResult(m,withImage){
+    const r=m.querySelector('#goldanAIResult');const d=data();const a=typeof analyze==='function'?analyze(d):null;if(!a){r.innerHTML='<b>تعذر التحليل</b>';return}
+    const last=d.at(-1),prev=d.at(-2),o=+last[1],h=+last[2],l=+last[3],cl=+last[4],body=Math.abs(cl-o),range=h-l||1;
+    let patterns=[];if(body/range<.18)patterns.push('شمعة تردد/دوجي محتملة');if(cl>o&&cl>+prev[4])patterns.push('زخم صاعد');if(cl<o&&cl<+prev[4])patterns.push('زخم هابط');if(h<+prev[2]&&l>+prev[3])patterns.push('شمعة داخلية');
+    const pl=plan();r.innerHTML='<b>النتيجة الحالية</b><br>الاتجاه: <b>'+a.signal+'</b> · قوة الإشارة: <b>'+a.confidence+'%</b><br>النموذج/السلوك المرصود: <b>'+((patterns.join(' + '))||'لا يوجد نموذج قوي مؤكد')+'</b><br>منطقة الدخول: <b>'+ (pl&&pl.signal!=='انتظار'?fmtP(pl.entry):'انتظار تأكيد')+'</b><br>إيقاف الخسارة: <b>'+ (pl&&pl.stop?fmtP(pl.stop):'—')+'</b> · الهدف 1: <b>'+ (pl&&pl.tp1?fmtP(pl.tp1):'—')+'</b> · الهدف 2: <b>'+ (pl&&pl.tp2?fmtP(pl.tp2):'—')+'</b><br><span style="color:#75849a">'+a.reasons.slice(0,6).join(' · ')+'</span>' + (withImage?'<br><span style="color:#7fa7d6">تمت قراءة الصورة محليًا كمرجع بصري، ثم تمت مطابقة آخر شمعة مع السوق الحي.</span>':'');
+  }
+  function setup(){
+    const canvas=c(),p=panel();if(!canvas||!p||canvas.dataset.interactive)return;canvas.dataset.interactive='1';
+    const tools=document.createElement('div');tools.className='chart-tools';tools.innerHTML='<button class="chart-tool chart-full-btn" type="button">⛶ شاشة التحليل</button><button class="chart-tool" type="button" data-zoom="in">＋ تكبير</button><button class="chart-tool" type="button" data-zoom="out">－ تصغير</button><button class="chart-tool" type="button" id="goldanAiButton">✦ تحليل AI بالصورة</button><span class="chart-hint">اسحب يمين/يسار · قرّب/بعّد</span>';canvas.after(tools);
+    tools.querySelector('.chart-full-btn').onclick=fullscreen;tools.querySelector('[data-zoom="in"]').onclick=()=>{view.count=Math.max(25,Math.round(view.count*.8));clamp(state.klines.length);draw();refreshOverlay()};tools.querySelector('[data-zoom="out"]').onclick=()=>{view.count=Math.min(180,Math.round(view.count*1.25));clamp(state.klines.length);draw();refreshOverlay()};tools.querySelector('#goldanAiButton').onclick=aiModal;
+    canvas.addEventListener('wheel',e=>{e.preventDefault();view.count=Math.max(25,Math.min(180,Math.round(view.count*(e.deltaY>0?1.12:.89))));clamp(state.klines.length);draw();refreshOverlay()},{passive:false});
     canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);view.drag=true;view.lastX=e.clientX;view.lastY=e.clientY;canvas.classList.add('chart-dragging')});
-    canvas.addEventListener('pointermove',e=>{if(!view.drag)return;const dx=e.clientX-view.lastX,dy=e.clientY-view.lastY;view.lastX=e.clientX;view.lastY=e.clientY;const step=Math.max(1,(canvas.clientWidth-70)/view.count);view.start-=Math.round(dx/step);view.yShift+=dy/(canvas.clientHeight||300)*.55;clampView(state.klines.length);view.yShift=Math.max(-.7,Math.min(.7,view.yShift));draw()});
+    canvas.addEventListener('pointermove',e=>{if(!view.drag)return;const dx=e.clientX-view.lastX,dy=e.clientY-view.lastY;view.lastX=e.clientX;view.lastY=e.clientY;const step=Math.max(1,(canvas.clientWidth-70)/view.count);view.start-=Math.round(dx/step);view.yShift+=dy/(canvas.clientHeight||300)*.55;clamp(state.klines.length);view.yShift=Math.max(-.7,Math.min(.7,view.yShift));draw();refreshOverlay()});
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>canvas.addEventListener(ev,()=>{view.drag=false;canvas.classList.remove('chart-dragging')}));
-    canvas.addEventListener('dblclick',fullscreen);
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&p.classList.contains('chart-fullscreen'))fullscreen()});
-    window.addEventListener('resize',()=>{if(state.klines.length)draw()});
+    canvas.addEventListener('dblclick',fullscreen);document.addEventListener('keydown',e=>{if(e.key==='Escape'&&p.classList.contains('chart-fullscreen'))fullscreen()});window.addEventListener('resize',()=>{if(state.klines.length){draw();refreshOverlay()}});
   }
-  const old=window.drawChart;
-  window.drawChart=draw;
-  setup();
-  setTimeout(()=>{setup();draw()},0);
+  window.drawChart=draw;setup();setTimeout(()=>{setup();draw();refreshOverlay()},0);
+  setInterval(()=>{if(state&&state.klines.length){draw();refreshOverlay()}},3000);
 })();
