@@ -32,11 +32,17 @@
       $('alertBtn').textContent='مفعّلة';$('alertBtn').disabled=true;
     }catch(e){$('alertBtn').textContent='تفعيل';$('alertText').textContent='تعذر تفعيل التنبيه الآن. جرّب مرة أخرى.'}
   }
+  function panelSafe(){return ()=>{const msg='GOLDAN AI\nبيانات Binance مباشرة\nالمؤشر: GOLDAN Trend الأزرق\nالإشارات: تحليلية وليست ضمانًا';if(navigator.share)navigator.share({title:'GOLDAN AI',text:msg}).catch(()=>{});else alert(msg)}}
   function wire(){
     if(!$('alertBtn'))return;
     $('alertBtn').onclick=enableNative; if($('bellTop'))$('bellTop').onclick=()=>{const b=$('alertBtn');if(b&&!b.disabled)b.click()};
-    if($('shareBtn'))$('shareBtn').onclick=async()=>{try{await navigator.share({title:'GOLDAN AI',text:'تحليل GOLDAN AI المباشر',url:location.href})}catch(e){}};
+    if($('shareBtn'))$('shareBtn').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'GOLDAN AI',text:'تحليل GOLDAN AI المباشر',url:location.href});else await navigator.clipboard.writeText(location.href)}catch(e){}};
+    if(document.querySelector('.star-btn'))document.querySelector('.star-btn').onclick=()=>{const b=document.querySelector('.star-btn');b.classList.toggle('goldan-star-on');b.textContent=b.classList.contains('goldan-star-on')?'★':'☆'};
+    document.querySelectorAll('.book-tabs button').forEach((b,i)=>b.onclick=()=>{document.querySelectorAll('.book-tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(i===0)book();else if(i===1){$('orderBook').innerHTML='<div class="book-cell">التداولات المباشرة ستظهر هنا مع تحديث Binance.</div>'}else if(i===2){$('orderBook').innerHTML='<div class="book-cell">مخطط الطلبات: يتم تجهيز العرض المرئي لعمق السوق.</div>'}else {$('orderBook').innerHTML='<div class="book-cell">وضع الشبكة جاهز — استخدم التحليل لتحديد مناطق الدخول والخروج.</div>'}});
+    const more=document.querySelector('.top-icon[aria-label="المزيد"]');if(more)more.onclick=()=>{const p=panelSafe();if(p)p();};
     book();stats();setInterval(book,2500);setInterval(stats,1000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(wire,50));else setTimeout(wire,50);
 })();
+
+const s=document.createElement('style');s.textContent='.goldan-star-on{color:#6fb2ff!important;text-shadow:0 0 12px #2f8cff}';document.head.appendChild(s);
