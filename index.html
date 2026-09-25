@@ -36,16 +36,5 @@
 </main><footer class="exchange-footer"><a href="reading.html">القراءة</a><a href="records.html">السجلات</a><a href="index.html" class="active">السوق</a><a href="ai-lab.html">التحليل</a><a href="settings.html">الإعدادات</a></footer><div class="data-badge">بيانات السوق: Binance Public API + WebSocket · الإشارات تحليلية وليست ضمانًا للربح</div>
 <script src="app.js"></script><script src="premium-analysis.js"></script><script src="interactive-chart.js"></script><script src="prediction-candles.js"></script><script src="exchange-ui.js"></script><script src="native-alert-bridge.js"></script>
 <script>
-(()=>{const b=id=>document.getElementById(id),strip=b('tvMarketStrip');['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT'].forEach(s=>{const x=document.createElement('button');x.textContent=s;x.onclick=()=>{if(window.setSymbol)setSymbol(s);else{const q=b('searchInput');if(q){q.value=s;q.dispatchEvent(new Event('input',{bubbles:true}))}}};strip.appendChild(x)});
-b('favoriteBtn')?.addEventListener('click',e=>e.currentTarget.classList.toggle('active'));
-b('saveLayoutBtn')?.addEventListener('click',()=>{localStorage.setItem('goldanLayout',JSON.stringify({symbol:b('assetSymbol')?.textContent,interval:document.querySelector('.tf.active')?.dataset.interval,type:window.goldanTVState?.type||'candle',ind:[...(window.goldanTVState?.inds||[])]}));alert('تم حفظ التخطيط')});
-b('layoutBtn')?.addEventListener('click',()=>alert('التخطيطات: يتم حفظ إعدادات الرسم والمؤشرات محليًا في GOLDAN.'));
-b('settingsBtn')?.addEventListener('click',()=>alert('إعدادات الرسم: نوع الرسم، المؤشرات، الشبكة، مقياس السعر وأزرار العرض موجودة من شريط الرسم.'));
-b('replayBtn')?.addEventListener('click',()=>alert('وضع إعادة التشغيل التدريجي للشموع قيد التفعيل؛ لا يعرض بيانات مستقبلية.'));
-b('undoBtn')?.addEventListener('click',()=>window.goldanTVState?.drawings?.pop(),);
-b('redoBtn')?.addEventListener('click',()=>alert('إعادة التنفيذ محفوظة للنسخة التالية.'));
-b('hideBtn')?.addEventListener('click',()=>{if(window.goldanTVState)window.goldanTVState.hidden=!window.goldanTVState.hidden});
-b('lockBtn')?.addEventListener('click',()=>{if(window.goldanTVState)window.goldanTVState.locked=!window.goldanTVState.locked});
-b('quickSearchBtn')?.addEventListener('click',()=>{const q=prompt('بحث سريع: اكتب رمز العملة أو الأداة أو المؤشر');if(q){const inp=b('searchInput');if(inp){inp.value=q;inp.dispatchEvent(new Event('input',{bubbles:true}))}}});
-})();
+(()=>{const b=id=>document.getElementById(id),strip=b('tvMarketStrip');['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT'].forEach(sym=>{const x=document.createElement('button');x.textContent=sym;x.onclick=()=>{const q=b('searchInput');if(q){q.value=sym;q.dispatchEvent(new Event('input',{bubbles:true}))}};strip?.appendChild(x)});})();
 </script></body></html>
