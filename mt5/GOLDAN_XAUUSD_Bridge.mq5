@@ -14,7 +14,7 @@ bool SendFeed(ENUM_TIMEFRAMES tf) {
  MqlRates rates[]; ArraySetAsSeries(rates,false);
  int copied=CopyRates(GoldSymbol,tf,0,BarsToSend,rates);
  if(copied<60) { Print("GOLDAN: waiting for 60+ bars; got ",copied); return false; }
- string body="{\"symbol\":\""+GoldSymbol+"\",\"timeframe\":\""+TfName(tf)+"\",\"candles\":[";
+ int digits=(int)SymbolInfoInteger(GoldSymbol,SYMBOL_DIGITS);\n string body="{\"symbol\":\"XAUUSD\",\"timeframe\":\""+TfName(tf)+"\",\"candles\":[";
  for(int i=0;i<copied;i++) {
   if(i>0) body+=",";
   body+="{\"time\":"+IntegerToString((long)rates[i].time)+",\"open\":"+DoubleToString(rates[i].open,digits)+",\"high\":"+DoubleToString(rates[i].high,digits)+",\"low\":"+DoubleToString(rates[i].low,digits)+",\"close\":"+DoubleToString(rates[i].close,digits)+",\"volume\":"+IntegerToString((long)rates[i].tick_volume)+"}";
