@@ -25,7 +25,7 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          cp index.html app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js prediction-candles.js native-alert-bridge.js reading.html records.html settings.html phase2.html ai-lab.html www/
+          cp index.html gold-analysis.html goldan-forex-engine.js app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js prediction-candles.js native-alert-bridge.js reading.html records.html settings.html phase2.html ai-lab.html www/
       - name: Add Android platform
         run: npx cap add android
       - name: Add GOLDAN AI background alert engine
