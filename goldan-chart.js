@@ -1,7 +1,7 @@
 (() => {
  'use strict';
  const host=document.getElementById('goldChart'), overlay=document.getElementById('drawingLayer');
- if(!host||!overlay||!window.LightweightCharts)return;
+ if(!host||!overlay)return;
  if(!window.LightweightCharts){host.textContent='مكتبة الرسم غير متاحة حاليًا. تحقق من الاتصال بالإنترنت.';window.GoldanChart={setData(){},setLevels(){},setMode(){}};return;}
  const L=window.LightweightCharts;
  const chart=L.createChart(host,{width:host.clientWidth,height:host.clientHeight,layout:{background:{type:'solid',color:'#080d14'},textColor:'#b8c4d4',fontFamily:'Cairo,Arial'},grid:{vertLines:{color:'#172330'},horzLines:{color:'#172330'}},rightPriceScale:{borderColor:'#29394a'},timeScale:{borderColor:'#29394a',timeVisible:true,secondsVisible:false},crosshair:{mode:L.CrosshairMode.Normal},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true}});
