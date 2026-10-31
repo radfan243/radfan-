@@ -14,10 +14,16 @@
     if(candles.some(c=>![c.time,c.open,c.high,c.low,c.close].every(Number.isFinite))) throw new Error('وصلت بيانات شموع غير صالحة');
     return {...payload,candles};
   }
-  async function fetchTradingViewSignal() {\n    const base=getBaseUrl(); if(!base) return {data:null,error:'bridge not configured'};\n    try { const r=await fetch(base+'/api/tradingview/signal?symbol=XAUUSD',{cache:'no-store'}); if(!r.ok) throw new Error('لا توجد إشارة TradingView واردة'); return {data:await r.json(),error:null}; } catch(e) { return {data:null,error:e.message}; }\n  }\n  async function fetchMultiTimeframe() {
+  async function fetchTradingViewSignal() {
+    const base=getBaseUrl(); if(!base) return {data:null,error:'bridge not configured'};
+    try { const r=await fetch(base+'/api/tradingview/signal?symbol=XAUUSD',{cache:'no-store'}); if(!r.ok) throw new Error('لا توجد إشارة TradingView واردة'); return {data:await r.json(),error:null}; } catch(e) { return {data:null,error:e.message}; }
+  }
+  async function fetchMultiTimeframe() {
     const frames=['M5','M15','H1','H4'];
     const results=await Promise.all(frames.map(async tf=>{try{return [tf,await fetchCandles(tf,500),null]}catch(e){return [tf,null,e.message]}}));
-    const out=Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));\n    out.TV=await fetchTradingViewSignal();\n    return out;
+    const out=Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));
+    out.TV=await fetchTradingViewSignal();
+    return out;
   }
   let timer=null, running=false;
   function stop(){if(timer)clearInterval(timer);timer=null;running=false;}
