@@ -45,7 +45,7 @@
  document.getElementById('drawMode')?.addEventListener('click',()=>setMode(mode==='pan'?'trend':'pan'));
  const observer=new ResizeObserver(()=>{chart.applyOptions({width:host.clientWidth,height:host.clientHeight});render();});observer.observe(host);
  chart.timeScale().subscribeVisibleTimeRangeChange(render);
- function setData(rows){const data=rows.map(c=>({time:Math.floor(c.time),open:c.open,high:c.high,low:c.low,close:c.close}));candles.setData(data);volume.setData(rows.map(c=>({time:Math.floor(c.time),value:c.volume||0,color:c.close>=c.open?'rgba(37,201,151,.35)':'rgba(255,100,125,.35)'})));chart.timeScale().fitContent();render();}
+ function setData(rows){const data=rows.map(c=>({time:Math.floor(c.time),open:c.open,high:c.high,low:c.low,close:c.close}));candles.setData(data);volume.setData(rows.map(c=>({time:Math.floor(c.time),value:c.volume||0,color:c.close>=c.open?'rgba(37,201,151,.35)':'rgba(255,100,125,.35)'})));const visible=Math.min(320,data.length);chart.timeScale().setVisibleLogicalRange({from:Math.max(0,data.length-visible),to:data.length+8});render();}
  function setLevels(plan){candles.applyOptions({});const old=chart.__goldanLines||[];old.forEach(x=>candles.removePriceLine(x));chart.__goldanLines=[];if(!plan||!plan.valid)return;const defs=[['دخول',plan.entry,'#e6bd63'],['وقف',plan.stop,'#ff647d'],['TP1',plan.targets[0],'#25c997'],['TP2',plan.targets[1],'#25c997'],['TP3',plan.targets[2],'#25c997']];for(const [title,price,col] of defs){if(!Number.isFinite(price))continue;chart.__goldanLines.push(candles.createPriceLine({price,title,color:col,lineWidth:1,lineStyle:L.LineStyle.Dashed,axisLabelVisible:true}));}}
  window.GoldanChart={setData,setLevels,chart,render,setMode};setMode('pan');
 })();
