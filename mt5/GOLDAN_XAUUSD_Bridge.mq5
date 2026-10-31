@@ -28,7 +28,8 @@ bool SendFeed(ENUM_TIMEFRAMES tf) {
  Print("GOLDAN: sent ",copied," ",GoldSymbol," ",TfName(tf)," candles"); return true;
 }
 int OnInit() {
- if(StringFind(BridgeURL,"YOUR-VPS")>=0 || StringFind(BridgeToken,"CHANGE_THIS")>=0 || StringLen(BridgeToken)<32) { Print("Set BridgeURL and a random BridgeToken of at least 32 characters."); return INIT_PARAMETERS_INCORRECT; }\n if(!SymbolSelect(GoldSymbol,true)) { Print("Cannot select broker gold symbol: ",GoldSymbol); return INIT_FAILED; }
+ if(StringFind(BridgeURL,"YOUR-VPS")>=0 || StringFind(BridgeToken,"CHANGE_THIS")>=0 || StringLen(BridgeToken)<32) { Print("Set BridgeURL and a random BridgeToken of at least 32 characters."); return INIT_PARAMETERS_INCORRECT; }
+ if(!SymbolSelect(GoldSymbol,true)) { Print("Cannot select broker gold symbol: ",GoldSymbol); return INIT_FAILED; }
  EventSetTimer(MathMax(10,SendEverySeconds)); SendFeed(FeedTimeframe); return INIT_SUCCEEDED;
 }
 void OnTimer() { SendFeed(FeedTimeframe); }
