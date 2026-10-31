@@ -27,7 +27,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --version
-          for f in app.js; do
+          for f in app.js goldan-forex-engine.js; do
             if [ -f "$f" ]; then node --check "$f"; fi
           done
           python - <<'PY'
