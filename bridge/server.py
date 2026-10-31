@@ -43,3 +43,31 @@ def read(symbol: str = Query(default='XAUUSD'), timeframe: str = Query(default='
     return {**item, 'candles': item['candles'][-limit:], 'age_seconds': max(0, int(time.time()) - item['received_at'])}
 @app.get('/')
 def root(): return {'service': 'GOLDAN AI MT5 Bridge', 'health': '/health', 'read_api': '/api/mt5/candles?symbol=XAUUSD&timeframe=M5'}
+TV_TOKEN = os.getenv('GOLDAN_TV_WEBHOOK_TOKEN', '').strip()
+tv_signal = None
+class TradingViewAlert(BaseModel):
+    secret: str
+    source: str = 'TRADINGVIEW'
+    symbol: str = 'XAUUSD'
+    timeframe: str
+    direction: str
+    price: float
+    stop: float
+    tp1: float
+    tp2: float
+    tp3: float
+    time: int | None = None
+@app.post('/api/tradingview/alert')
+def tradingview_alert(alert: TradingViewAlert):
+    global tv_signal
+    if not TV_TOKEN or alert.secret != TV_TOKEN: raise HTTPException(status_code=401, detail='Invalid TradingView webhook secret')
+    if alert.symbol.upper() != 'XAUUSD' or alert.direction.upper() not in ('BUY','SELL'): raise HTTPException(status_code=400, detail='Unsupported alert')
+    item = alert.model_dump(exclude={'secret'})
+    item['direction'] = item['direction'].upper()
+    with lock: tv_signal = {**item, 'received_at': int(time.time())}
+    return {'ok': True, 'received': True, 'symbol': 'XAUUSD'}
+@app.get('/api/tradingview/signal')
+def read_tradingview_signal(symbol: str = Query(default='XAUUSD')):
+    with lock: item = tv_signal
+    if not item or item['symbol'].upper() != symbol.upper(): raise HTTPException(status_code=404, detail='No TradingView alert received yet')
+    return item
