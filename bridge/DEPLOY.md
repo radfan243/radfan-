@@ -23,3 +23,12 @@
 - رمز الذهب يختلف بين الوسطاء (مثل XAUUSD أو GOLD أو XAUUSD.a). عدّل GoldSymbol حسب وسيطك.
 - لإرسال أطر M5 وM15 وH1 وH4، شغّل نسخًا منفصلة من EA مع تغيير FeedTimeframe لكل نسخة.
 - تطبيق MT5 على Android وحده لا يشغّل هذا الجسر؛ يلزم MT5 Desktop على Windows أو VPS.
+## ربط TradingView أيضًا
+1. اضبط متغير البيئة السري GOLDAN_TV_WEBHOOK_TOKEN في خدمة الجسر (قيمة طويلة مختلفة عن GOLDAN_BRIDGE_TOKEN).
+2. افتح tradingview/GOLDAN_AI_XAUUSD_Alerts.pine وانسخ الكود إلى Pine Editor في TradingView ثم أضفه إلى مخطط XAUUSD.
+3. أنشئ Alert واختر Any alert() function call.
+4. فعّل Webhook URL وضع عنوان: https://YOUR-HOST/api/tradingview/alert
+5. في إعدادات مؤشر Pine ضع السر نفسه في حقل Webhook secret، ثم احفظ التنبيه.
+6. ستظهر آخر إشارة TradingView في صفحة GOLDAN AI للمقارنة مع تحليل شموع MT5.
+
+ملاحظة: TradingView يرسل تنبيهًا عند إغلاق الشمعة فقط؛ هذا لا يزوّد التطبيق بسجل OHLC كامل من TradingView. المخطط المضمّن للعرض، وMT5 هو مصدر الشموع الفعلية لمحرك GOLDAN.
