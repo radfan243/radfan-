@@ -1,36 +1,29 @@
 (() => {
   'use strict';
-  const KEY = 'goldan_mt5_bridge_url_v1';
-  const clean = value => String(value || '').trim().replace(/\/+$/, '');
-  const getBaseUrl = () => clean(localStorage.getItem(KEY) || '');
-  const setBaseUrl = value => { const v=clean(value); if(v && !/^https:\/\//i.test(v) && !/^http:\/\/localhost(?::\d+)?$/i.test(v) && !/^http:\/\/127\.0\.0\.1(?::\d+)?$/i.test(v)) throw new Error('استخدم رابط HTTPS آمن للجسر'); localStorage.setItem(KEY,v); return v; };
-  async function fetchCandles(timeframe='M5', limit=500) {
-    const base=getBaseUrl(); if(!base) throw new Error('أدخل رابط جسر MT5 أولاً');
-    const url=base+'/api/mt5/candles?symbol=XAUUSD&timeframe='+encodeURIComponent(timeframe)+'&limit='+limit;
-    const response=await fetch(url,{cache:'no-store'}); if(!response.ok) throw new Error(response.status===404?'لم تصل شموع MT5 لهذا الإطار بعد':'تعذر قراءة بيانات MT5 (HTTP '+response.status+')');
-    const payload=await response.json();
-    if(!Array.isArray(payload.candles)||payload.candles.length<60) throw new Error('البيانات المستلمة أقل من 60 شمعة');
-    const candles=payload.candles.map(c=>({time:Number(c.time),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume||0)}));
-    if(candles.some(c=>![c.time,c.open,c.high,c.low,c.close].every(Number.isFinite))) throw new Error('وصلت بيانات شموع غير صالحة');
-    return {...payload,candles};
+  const KEY='goldan_mt5_bridge_url_v1', SOURCE_KEY='goldan_data_source_v1';
+  const clean=v=>String(v||'').trim().replace(/\\/+$/,'');
+  const getBaseUrl=()=>clean(localStorage.getItem(KEY)||'');
+  const setBaseUrl=value=>{const v=clean(value);if(!/^https:\\/\\//i.test(v)&&!/^http:\\/\\/localhost(?::\\d+)?$/i.test(v)&&!/^http:\\/\\/127\\.0\\.0\\.1(?::\\d+)?$/i.test(v))throw new Error('استخدم رابط HTTPS آمن للجسر');localStorage.setItem(KEY,v);return v;};
+  let source=localStorage.getItem(SOURCE_KEY)||'yahoo',timer=null,running=false;
+  const tfMap={M5:{interval:'5m',range:'60d'},M15:{interval:'15m',range:'60d'},H1:{interval:'60m',range:'2y'},H4:{interval:'60m',range:'2y'}};
+  function openCache(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return reject(new Error('IndexedDB unavailable'));const req=indexedDB.open('goldan_market_history',1);req.onupgradeneeded=()=>req.result.createObjectStore('candles',{keyPath:'key'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+  async function cacheGet(key){try{const db=await openCache();return await new Promise((resolve,reject)=>{const r=db.transaction('candles').objectStore('candles').get(key);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}catch(_){return null;}}
+  async function cachePut(key,candles){try{const db=await openCache();await new Promise((resolve,reject)=>{const tx=db.transaction('candles','readwrite');tx.objectStore('candles').put({key,candles,savedAt:Date.now()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch(_){}}
+  function aggregate4h(rows){const groups=new Map();for(const c of rows){const bucket=Math.floor(c.time/14400)*14400;let g=groups.get(bucket);if(!g){g={time:bucket,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volume||0};groups.set(bucket,g);}else{g.high=Math.max(g.high,c.high);g.low=Math.min(g.low,c.low);g.close=c.close;g.volume+=(c.volume||0);}}return [...groups.values()].sort((a,b)=>a.time-b.time);}
+  async function yahooCandles(tf){
+    const spec=tfMap[tf];if(!spec)throw new Error('الإطار الزمني غير مدعوم');
+    const cacheKey='yahoo:XAUUSD='+':'+tf,urls=['https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD%3D?range='+spec.range+'&interval='+spec.interval,'https://query2.finance.yahoo.com/v8/finance/chart/XAUUSD%3D?range='+spec.range+'&interval='+spec.interval];
+    let rows=null,lastError=null;
+    for(const url of urls){try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json(),result=j.chart&&j.chart.result&&j.chart.result[0];if(!result)throw new Error(j.chart?.error?.description||'لا توجد بيانات من Yahoo Finance');const q=result.indicators.quote[0],ts=result.timestamp||[];rows=ts.map((time,i)=>({time:Number(time),open:Number(q.open[i]),high:Number(q.high[i]),low:Number(q.low[i]),close:Number(q.close[i]),volume:Number(q.volume?.[i]||0)})).filter(c=>[c.time,c.open,c.high,c.low,c.close].every(Number.isFinite));if(tf==='H4')rows=aggregate4h(rows);if(rows.length<30)throw new Error('عدد الشموع التاريخية غير كافٍ');await cachePut(cacheKey,rows);break;}catch(e){lastError=e;}}
+    if(!rows){const cached=await cacheGet(cacheKey);if(cached?.candles?.length>=30)return {candles:cached.candles,source_label:'Yahoo Finance · نسخة محفوظة',age_seconds:0,received_at:Math.floor(Date.now()/1000),timeframe:tf,symbol:'XAUUSD',historical:true};throw new Error('تعذر الوصول إلى Yahoo Finance من المتصفح. '+(lastError?.message||'قد يمنع مزود الشبكة الاتصال'));}
+    return {candles:rows,source_label:'Yahoo Finance · XAUUSD (قد تكون متأخرة)',age_seconds:0,received_at:Math.floor(Date.now()/1000),timeframe:tf,symbol:'XAUUSD',historical:true};
   }
-  async function fetchTradingViewSignal() {
-    const base=getBaseUrl(); if(!base) return {data:null,error:'bridge not configured'};
-    try { const r=await fetch(base+'/api/tradingview/signal?symbol=XAUUSD',{cache:'no-store'}); if(!r.ok) throw new Error('لا توجد إشارة TradingView واردة'); return {data:await r.json(),error:null}; } catch(e) { return {data:null,error:e.message}; }
-  }
-  async function fetchMultiTimeframe() {
-    const frames=['M5','M15','H1','H4'];
-    const results=await Promise.all(frames.map(async tf=>{try{return [tf,await fetchCandles(tf,500),null]}catch(e){return [tf,null,e.message]}}));
-    const out=Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));
-    out.TV=await fetchTradingViewSignal();
-    return out;
-  }
-  let timer=null, running=false;
+  async function mt5Candles(tf,limit=500){const base=getBaseUrl();if(!base)throw new Error('أدخل رابط HTTPS للجسر أولاً');const r=await fetch(base+'/api/mt5/candles?symbol=XAUUSD&timeframe='+encodeURIComponent(tf)+'&limit='+limit,{cache:'no-store'});if(!r.ok)throw new Error('تعذر قراءة بيانات MT5 (HTTP '+r.status+')');const p=await r.json();if(!Array.isArray(p.candles)||p.candles.length<60)throw new Error('البيانات المستلمة أقل من 60 شمعة');return {...p,source_label:'MT5 · '+p.symbol};}
+  async function fetchCandles(tf='M5',limit=500){if(source==='yahoo')return yahooCandles(tf);return mt5Candles(tf,limit);}
+  async function fetchTradingViewSignal(){if(source!=='mt5')return {data:null,error:'TradingView webhook يحتاج الجسر الاختياري'};const base=getBaseUrl();try{const r=await fetch(base+'/api/tradingview/signal?symbol=XAUUSD',{cache:'no-store'});if(!r.ok)throw new Error('لا توجد إشارة TradingView واردة');return {data:await r.json(),error:null};}catch(e){return {data:null,error:e.message};}}
+  async function fetchMultiTimeframe(){const frames=['M5','M15','H1','H4'];const results=await Promise.all(frames.map(async tf=>{try{return [tf,await fetchCandles(tf,500),null];}catch(e){return [tf,null,e.message];}}));const out=Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));out.TV=await fetchTradingViewSignal();return out;}
   function stop(){if(timer)clearInterval(timer);timer=null;running=false;}
-  function start(timeframe, callback, everyMs=7000){
-    stop(); if(running)return; running=true;
-    const poll=async()=>{try{const [chart,multi]=await Promise.all([fetchCandles(timeframe,500),fetchMultiTimeframe()]);callback({ok:true,chart,multi,stale:Number(chart.age_seconds||0)>120});}catch(error){callback({ok:false,error:error.message});}};
-    poll(); timer=setInterval(poll,everyMs);
-  }
-  window.GoldanLiveFeed=Object.freeze({getBaseUrl,setBaseUrl,fetchCandles,fetchMultiTimeframe,fetchTradingViewSignal,start,stop});
+  function start(tf,callback,everyMs){stop();running=true;const poll=async()=>{try{const [chart,multi]=await Promise.all([fetchCandles(tf,500),fetchMultiTimeframe()]);callback({ok:true,chart,multi,stale:false});}catch(error){callback({ok:false,error:error.message});}};poll();timer=setInterval(poll,everyMs||60000);}
+  function setSource(v){source=v==='mt5'?'mt5':'yahoo';localStorage.setItem(SOURCE_KEY,source);}
+  window.GoldanLiveFeed=Object.freeze({getBaseUrl,setBaseUrl,setSource,getSource:()=>source,isRunning:()=>running,fetchCandles,fetchMultiTimeframe,fetchTradingViewSignal,start,stop});
 })();
