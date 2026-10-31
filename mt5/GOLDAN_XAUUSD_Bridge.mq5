@@ -17,7 +17,7 @@ bool SendFeed(ENUM_TIMEFRAMES tf) {
  string body="{\"symbol\":\""+GoldSymbol+"\",\"timeframe\":\""+TfName(tf)+"\",\"candles\":[";
  for(int i=0;i<copied;i++) {
   if(i>0) body+=",";
-  body+="{\"time\":"+IntegerToString((long)rates[i].time)+",\"open\":"+DoubleToString(rates[i].open,_Digits)+",\"high\":"+DoubleToString(rates[i].high,_Digits)+",\"low\":"+DoubleToString(rates[i].low,_Digits)+",\"close\":"+DoubleToString(rates[i].close,_Digits)+",\"volume\":"+IntegerToString((long)rates[i].tick_volume)+"}";
+  body+="{\"time\":"+IntegerToString((long)rates[i].time)+",\"open\":"+DoubleToString(rates[i].open,digits)+",\"high\":"+DoubleToString(rates[i].high,digits)+",\"low\":"+DoubleToString(rates[i].low,digits)+",\"close\":"+DoubleToString(rates[i].close,digits)+",\"volume\":"+IntegerToString((long)rates[i].tick_volume)+"}";
  }
  body+="]}";
  char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); ArrayResize(data,ArraySize(data)-1);
