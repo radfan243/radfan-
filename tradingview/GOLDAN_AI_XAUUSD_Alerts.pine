@@ -1,0 +1,30 @@
+//@version=5
+indicator("GOLDAN AI XAUUSD Signal Alerts", overlay=true, max_labels_count=100)
+// Closed-bar alerts only. This script never places trades.
+secret = input.string("SET_A_PRIVATE_WEBHOOK_TOKEN", "Webhook secret")
+fastLen = input.int(20, "EMA Fast", minval=2)
+slowLen = input.int(50, "EMA Slow", minval=3)
+rsiLen = input.int(14, "RSI Length", minval=2)
+atrLen = input.int(14, "ATR Length", minval=2)
+lookback = input.int(20, "Breakout Lookback", minval=5)
+riskAtr = input.float(1.5, "Stop ATR Multiplier", minval=0.2, step=0.1)
+emaFast = ta.ema(close, fastLen)
+emaSlow = ta.ema(close, slowLen)
+rsiValue = ta.rsi(close, rsiLen)
+atrValue = ta.atr(atrLen)
+priorHigh = ta.highest(high[1], lookback)
+priorLow = ta.lowest(low[1], lookback)
+buySignal = barstate.isconfirmed and emaFast > emaSlow and close > emaFast and rsiValue >= 52 and rsiValue <= 72 and close > priorHigh
+sellSignal = barstate.isconfirmed and emaFast < emaSlow and close < emaFast and rsiValue <= 48 and rsiValue >= 28 and close < priorLow
+buySL = close - atrValue * riskAtr
+sellSL = close + atrValue * riskAtr
+plot(emaFast, "EMA 20", color=color.new(color.aqua, 0), linewidth=2)
+plot(emaSlow, "EMA 50", color=color.new(color.orange, 0), linewidth=2)
+plotshape(buySignal, title="GOLDAN BUY", style=shape.labelup, location=location.belowbar, color=color.new(color.green, 0), text="GOLDAN BUY", textcolor=color.white)
+plotshape(sellSignal, title="GOLDAN SELL", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0), text="GOLDAN SELL", textcolor=color.white)
+if buySignal
+    alert('{"secret":"' + secret + '","source":"TRADINGVIEW","symbol":"XAUUSD","timeframe":"' + timeframe.period + '","direction":"BUY","price":' + str.tostring(close) + ',"stop":' + str.tostring(buySL) + ',"tp1":' + str.tostring(close + atrValue * riskAtr) + ',"tp2":' + str.tostring(close + atrValue * riskAtr * 2) + ',"tp3":' + str.tostring(close + atrValue * riskAtr * 3) + ',"time":' + str.tostring(time) + '}', alert.freq_once_per_bar_close)
+if sellSignal
+    alert('{"secret":"' + secret + '","source":"TRADINGVIEW","symbol":"XAUUSD","timeframe":"' + timeframe.period + '","direction":"SELL","price":' + str.tostring(close) + ',"stop":' + str.tostring(sellSL) + ',"tp1":' + str.tostring(close - atrValue * riskAtr) + ',"tp2":' + str.tostring(close - atrValue * riskAtr * 2) + ',"tp3":' + str.tostring(close - atrValue * riskAtr * 3) + ',"time":' + str.tostring(time) + '}', alert.freq_once_per_bar_close)
+alertcondition(buySignal, title="GOLDAN BUY", message="GOLDAN AI BUY XAUUSD")
+alertcondition(sellSignal, title="GOLDAN SELL", message="GOLDAN AI SELL XAUUSD")
