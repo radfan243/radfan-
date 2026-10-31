@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: goldan-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build-apk:
     runs-on: ubuntu-latest
