@@ -34,7 +34,7 @@
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script><script src="goldan-forex-engine.js"></script><script src="goldan-live-feed.js"></script><script src="goldan-chart.js"></script>
 <script>
 (()=>{'use strict';
-const $=id=>document.getElementById(id);let lastDirection='WAIT',notifications=false,currentTf='M5';
+const $=id=>document.getElementById(id);let lastDirection='WAIT',notifications=false,currentTf='M5',lastRenderedTf=null;
 const fmt=n=>Number.isFinite(n)?n.toFixed(2):'—',tfText={M5:'5 دقائق',M15:'15 دقيقة',H1:'ساعة',H4:'4 ساعات'};
 function setStatus(msg,live=false){$('mainStatus').textContent=msg;$('chartSource').classList.toggle('live',live);$('chartSource').innerHTML='<span><i></i>'+(live?'مصدر البيانات · XAUUSD':'مصدر البيانات غير متاح')+'</span><span>'+tfText[currentTf]+'</span>';}
 function clearPlan(title,reason){lastDirection='WAIT';$('signalCard').className='signal wait';$('signalTitle').textContent=title;$('signalScore').textContent='انتظار';$('signalReason').textContent=reason;['entry','stop','tp1','tp2','tp3','rr'].forEach(id=>$(id).textContent='—');GoldanChart.setLevels(null);}
@@ -50,7 +50,7 @@ $('entry').textContent=fmt(base.entry);$('stop').textContent=fmt(base.stop);$('t
 if(notifications&&lastDirection!==direction){try{if('Notification'in window&&Notification.permission==='granted')new Notification('GOLDAN AI · XAUUSD',{body:(direction==='BUY'?'شراء':'بيع')+' · Entry '+fmt(base.entry)+' · SL '+fmt(base.stop)+' · TP1 '+fmt(base.targets[0])});}catch(e){}}
 lastDirection=direction;
 }
-function update(data){if(!data.ok){setStatus(data.error,false);return;}const rows=data.chart.candles;GoldanChart.setData(rows);const last=rows[rows.length-1],closedRows=rows.slice(0,-1),a=GoldanForexEngine.analyze(closedRows);
+function update(data){if(!data.ok){setStatus(data.error,false);return;}const rows=data.chart.candles;GoldanChart.setData(rows,lastRenderedTf!==currentTf);lastRenderedTf=currentTf;const last=rows[rows.length-1],closedRows=rows.slice(0,-1),a=GoldanForexEngine.analyze(closedRows);
 $('lastPrice').textContent=fmt(last.close);$('atrValue').textContent=fmt(a.atr);$('rsiValue').textContent=fmt(a.rsi);$('resistance').textContent=fmt(a.rangeHigh);$('support').textContent=fmt(a.rangeLow);$('updatedAt').textContent=new Date(data.chart.received_at*1000).toLocaleTimeString('ar');
 const stale=Number(data.chart.age_seconds||0)>120;setStatus(stale?'آخر شمعة قديمة — تحقق من المصدر':'تم تحميل '+rows.length.toLocaleString('ar')+' شمعة · '+(data.chart.source_label||'XAUUSD')+' · '+data.chart.timeframe+' · قد تكون الأسعار متأخرة',!stale);updateSignal(data.multi);}
 function connect(){try{currentTf=$('timeframe').value;const source=$('dataSource').value;if(source==='mt5'){const base=GoldanLiveFeed.setBaseUrl($('bridgeUrl').value);$('bridgeUrl').value=base;}GoldanLiveFeed.setSource(source);GoldanLiveFeed.start(currentTf,update,source==='mt5'?7000:60000);}catch(e){setStatus(e.message,false);}}
