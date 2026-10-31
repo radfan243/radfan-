@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111d"><meta name="description" content="GOLDAN AI XAUUSD — تحليل فني للذهب مع مخطط TradingView وإشارات مبنية على بيانات OHLC المدخلة.">
+<title>GOLDAN AI — تحليل الذهب XAUUSD</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#06101a;--panel:#0b1725;--line:#1b3047;--muted:#8da4bd;--blue:#58a6ff;--green:#24d69a;--red:#ff667a;--gold:#f4c76a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#10253a 0,#06101a 55%);color:#eaf3ff;font-family:Cairo,Arial,sans-serif}button,textarea,select{font:inherit}.wrap{max-width:1100px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.brand{font-weight:900;font-size:19px;letter-spacing:.4px}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:500}.back,.btn{border:1px solid var(--line);background:#102238;color:#dcecff;padding:9px 13px;border-radius:10px;text-decoration:none;cursor:pointer}.hero{border:1px solid #27415e;border-radius:17px;padding:17px;background:linear-gradient(130deg,#10243a,#0a1522);display:flex;justify-content:space-between;gap:12px;align-items:center}.eyebrow{font-size:10px;color:var(--gold);font-weight:800}.hero h1{font-size:23px;margin:4px 0}.hero p{color:var(--muted);font-size:12px;margin:0}.pill{border:1px solid #4a3c22;color:var(--gold);border-radius:30px;padding:6px 10px;font-size:11px;white-space:nowrap}.grid{display:grid;grid-template-columns:1.45fr 1fr;gap:14px;margin-top:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px;min-width:0}.card h2{font-size:14px;margin:0 0 10px}.chart{height:480px;overflow:hidden;border-radius:10px;background:#080f18}.chart iframe{width:100%;height:100%;border:0}.muted{color:var(--muted);font-size:11px;line-height:1.8}.status{border:1px solid #604e2c;background:#211d13;color:#f3d38b;border-radius:10px;padding:10px;font-size:11px;line-height:1.8;margin:10px 0}.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{background:#0e2032;border:1px solid #1c3650;padding:10px;border-radius:10px}.metric span{display:block;color:var(--muted);font-size:10px}.metric b{font-size:14px;direction:ltr;display:block;text-align:right}.signal{margin-top:10px;padding:13px;border-radius:12px;border:1px solid var(--line);background:#0a1724}.signal.wait{border-color:#5a4a2b}.signal.buy{border-color:#176a50}.signal.sell{border-color:#733747}.signal strong{font-size:19px}.buyText{color:var(--green)}.sellText{color:var(--red)}.waitText{color:var(--gold)}textarea{width:100%;min-height:145px;background:#07111c;color:#dcecff;border:1px solid #28415b;border-radius:10px;padding:10px;direction:ltr;text-align:left;font:12px ui-monospace,monospace;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.primary{background:#16477a;border-color:#286ba8}.list{padding-right:18px;color:#bdcde0;font-size:11px;line-height:2}.levels{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:10px}.level{background:#0e2032;border-radius:9px;padding:9px;font-size:11px}.level b{display:block;direction:ltr;text-align:right}.foot{margin:16px 0;color:#758ba3;font-size:10px;text-align:center}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.chart{height:420px}.hero h1{font-size:19px}.wrap{padding:11px}}
+</style></head>
+<body><div class="wrap">
+<header class="top"><div class="brand">GOLDAN AI <small>SMART MARKET INTELLIGENCE</small></div><a class="back" href="index.html">العودة للسوق ↩</a></header>
+<section class="hero"><div><span class="eyebrow">GOLD · XAUUSD</span><h1>مركز تحليل الذهب الاحترافي</h1><p>مخطط TradingView + محرك إشارات مستقل قابل للربط بمصدر MT5</p></div><span class="pill">نسخة تجريبية آمنة · لا تنفذ صفقات</span></section>
+<div class="grid">
+<section class="card"><h2>مخطط الذهب — TradingView</h2><div class="chart"><iframe id="tvChart" title="TradingView XAUUSD chart" loading="lazy" allowfullscreen src="https://www.tradingview.com/widgetembed/?frameElementId=goldan-tv&symbol=OANDA%3AXAUUSD&interval=5&hidesidetoolbar=0&symboledit=1&saveimage=0&toolbarbg=08111d&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&studies=%5B%5D"></iframe></div><p class="muted">الرسم مضمّن من TradingView. وجود الرسم لا يعني أن شموعه متاحة تلقائيًا لمحرك الإشارات؛ نحتاج مصدر OHLC موثوقًا منفصلًا لحساب الأهداف.</p></section>
+<section class="card"><h2>محرك التحليل الفني XAUUSD</h2><div class="status" id="sourceStatus">حالة البيانات: لم يتم توصيل مصدر شموع بعد. لن نصدر BUY أو SELL من سعر تخميني.</div><div class="metrics">
+<div class="metric"><span>EMA 20</span><b id="ema20">—</b></div><div class="metric"><span>EMA 50</span><b id="ema50">—</b></div><div class="metric"><span>RSI 14</span><b id="rsi">—</b></div><div class="metric"><span>ATR 14</span><b id="atr">—</b></div></div>
+<div class="signal wait" id="signal"><strong class="waitText" id="direction">انتظار البيانات</strong><p class="muted" id="signalReason">أدخل شموع XAUUSD الحقيقية بصيغة OHLC أدناه لتشغيل التحليل.</p></div>
+<div class="levels"><div class="level">الدخول<b id="entry">—</b></div><div class="level">وقف الخسارة SL<b id="stop">—</b></div><div class="level">الهدف TP1<b id="tp1">—</b></div><div class="level">الهدف TP2<b id="tp2">—</b></div><div class="level">الهدف TP3<b id="tp3">—</b></div><div class="level">نسبة العائد للمخاطرة<b id="rr">—</b></div></div>
+<p class="muted">المنهج الحالي: EMA20/50 + RSI14 + ATR14 + اختراق نطاق 20 شمعة. الإشارة لا تظهر إلا عند تحقق الشروط كاملة.</p></section>
+</div>
+<section class="card" style="margin-top:14px"><h2>إدخال بيانات الشموع الحقيقية (OHLC)</h2><p class="muted">ألصق مصفوفة JSON تحتوي 60 شمعة أو أكثر، من الأقدم إلى الأحدث. الحقول المطلوبة: time, open, high, low, close، وvolume اختياري. لا تستخدم بيانات تجريبية على أنها أسعار حقيقية.</p>
+<textarea id="candleInput" spellcheck="false" placeholder='[{"time":"2026-10-31T10:00:00Z","open":4000.0,"high":4003.0,"low":3998.0,"close":4001.5,"volume":1200}, ...]'></textarea>
+<div class="actions"><button class="btn primary" id="analyzeBtn">تحليل الشموع</button><button class="btn" id="clearBtn">مسح البيانات</button><button class="btn" id="notifyBtn">تفعيل تنبيه المتصفح</button></div><p class="muted" id="message" role="status">لا توجد بيانات محفوظة أو أسعار افتراضية في هذه الصفحة.</p></section>
+<section class="card" style="margin-top:14px"><h2>مصادر الربط وحالة التكامل</h2><ul class="list"><li><b>TradingView:</b> مخطط XAUUSD مضمّن للعرض والتحليل البصري.</li><li><b>MT5 على الهاتف:</b> لا يمكن لتطبيق Android تشغيل Expert Advisor أو خادم MT5 محليًا مثل نسخة Windows؛ لم يتم الادعاء بوجود اتصال مباشر.</li><li><b>مرحلة MT5 التالية:</b> جسر آمن عبر MT5 على Windows/VPS يرسل شموع OHLC فقط إلى المحرك، دون كلمة مرور أو صلاحية تنفيذ أوامر.</li><li><b>Binance:</b> محركه الحالي يبقى كما هو ولا يتم استبداله بهذه الوحدة.</li></ul></section>
+<footer class="foot">GOLDAN AI · أداة تحليل تعليمية وليست توصية استثمارية أو ضمانًا للربح.</footer>
+</div>
+<script src="goldan-forex-engine.js"></script><script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);let lastAlert='';
+const fmt=n=>Number.isFinite(n)?n.toFixed(2):'—';
+function render(a){
+ $('ema20').textContent=fmt(a.ema20);$('ema50').textContent=fmt(a.ema50);$('rsi').textContent=fmt(a.rsi);$('atr').textContent=fmt(a.atr);
+ const signal=$('signal');signal.className='signal '+(a.direction==='BUY'?'buy':a.direction==='SELL'?'sell':'wait');
+ const dir=$('direction');dir.textContent=a.direction==='BUY'?'إشارة شراء BUY':a.direction==='SELL'?'إشارة بيع SELL':'انتظار — لا توجد فرصة مكتملة';
+ dir.className=a.direction==='BUY'?'buyText':a.direction==='SELL'?'sellText':'waitText';
+ $('signalReason').textContent=a.reasons.join(' · ');
+ $('entry').textContent=fmt(a.entry);$('stop').textContent=fmt(a.stop);
+ $('tp1').textContent=fmt(a.targets[0]);$('tp2').textContent=fmt(a.targets[1]);$('tp3').textContent=fmt(a.targets[2]);$('rr').textContent=a.riskReward||'—';
+ $('sourceStatus').textContent='تم تحليل '+a.candleCount+' شمعة مدخلة. آخر إغلاق: '+fmt(a.entry)+' — تأكد من أن المصدر XAUUSD ونفس الإطار الزمني.';
+ if(a.valid&&lastAlert!==a.direction){lastAlert=a.direction; if('Notification'in window&&Notification.permission==='granted')new Notification('GOLDAN AI · XAUUSD',{body:dir.textContent+' | الدخول '+fmt(a.entry)+' | SL '+fmt(a.stop)}); }
+}
+$('analyzeBtn').addEventListener('click',()=>{
+ try{const data=JSON.parse($('candleInput').value);const result=window.GoldanForexEngine.analyze(data);render(result);$('message').textContent='اكتمل التحليل الحسابي. راجع المصدر والإطار الزمني قبل الاعتماد على أي إشارة.';}
+ catch(e){$('message').textContent='تعذر التحليل: '+e.message;}
+});
+$('clearBtn').addEventListener('click',()=>{$('candleInput').value='';$('message').textContent='تم مسح الإدخال. لا توجد بيانات شموع محملة.';lastAlert='';});
+$('notifyBtn').addEventListener('click',async()=>{if(!('Notification'in window)){$('message').textContent='هذا المتصفح لا يدعم إشعارات النظام.';return;}const p=await Notification.requestPermission();$('message').textContent=p==='granted'?'تم السماح بتنبيهات هذا المتصفح.':'لم يتم السماح بالتنبيهات.';});
+})();
+</script></body></html>
