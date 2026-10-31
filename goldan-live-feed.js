@@ -14,10 +14,10 @@
     if(candles.some(c=>![c.time,c.open,c.high,c.low,c.close].every(Number.isFinite))) throw new Error('وصلت بيانات شموع غير صالحة');
     return {...payload,candles};
   }
-  async function fetchMultiTimeframe() {
+  async function fetchTradingViewSignal() {\n    const base=getBaseUrl(); if(!base) return {data:null,error:'bridge not configured'};\n    try { const r=await fetch(base+'/api/tradingview/signal?symbol=XAUUSD',{cache:'no-store'}); if(!r.ok) throw new Error('لا توجد إشارة TradingView واردة'); return {data:await r.json(),error:null}; } catch(e) { return {data:null,error:e.message}; }\n  }\n  async function fetchMultiTimeframe() {
     const frames=['M5','M15','H1','H4'];
     const results=await Promise.all(frames.map(async tf=>{try{return [tf,await fetchCandles(tf,500),null]}catch(e){return [tf,null,e.message]}}));
-    return Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));
+    const out=Object.fromEntries(results.map(([tf,data,error])=>[tf,{data,error}]));\n    out.TV=await fetchTradingViewSignal();\n    return out;
   }
   let timer=null, running=false;
   function stop(){if(timer)clearInterval(timer);timer=null;running=false;}
@@ -26,5 +26,5 @@
     const poll=async()=>{try{const [chart,multi]=await Promise.all([fetchCandles(timeframe,500),fetchMultiTimeframe()]);callback({ok:true,chart,multi,stale:Number(chart.age_seconds||0)>120});}catch(error){callback({ok:false,error:error.message});}};
     poll(); timer=setInterval(poll,everyMs);
   }
-  window.GoldanLiveFeed=Object.freeze({getBaseUrl,setBaseUrl,fetchCandles,fetchMultiTimeframe,start,stop});
+  window.GoldanLiveFeed=Object.freeze({getBaseUrl,setBaseUrl,fetchCandles,fetchMultiTimeframe,fetchTradingViewSignal,start,stop});
 })();
