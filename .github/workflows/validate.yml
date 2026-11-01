@@ -27,7 +27,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --version
-          for f in app.js; do
+          for f in app.js goldan-forex-engine.js goldan-live-feed.js goldan-chart.js; do
             if [ -f "$f" ]; then node --check "$f"; fi
           done
           python - <<'PY'
@@ -44,3 +44,6 @@ jobs:
                       print(f'{p} script {i} failed:\n{r.stderr}'); sys.exit(1)
           print('Embedded JavaScript syntax validation passed')
           PY
+
+      - name: Validate MT5 bridge Python syntax
+        run: python -m py_compile bridge/server.py

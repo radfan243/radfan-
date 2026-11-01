@@ -3,7 +3,12 @@ name: Build GOLDAN AI APK
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+concurrency:
+  group: goldan-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -25,7 +30,7 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          cp index.html app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js prediction-candles.js native-alert-bridge.js reading.html records.html settings.html phase2.html ai-lab.html www/
+          cp index.html gold-analysis.html goldan-forex-engine.js goldan-live-feed.js goldan-chart.js app.js styles.css exchange-ui.css exchange-ui.js premium-analysis.js interactive-chart.js prediction-candles.js native-alert-bridge.js reading.html records.html settings.html phase2.html ai-lab.html www/
       - name: Add Android platform
         run: npx cap add android
       - name: Add GOLDAN AI background alert engine
@@ -77,7 +82,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Validate web JavaScript
-        run: node --check app.js && node --check exchange-ui.js && node --check interactive-chart.js && node --check prediction-candles.js && node --check native-alert-bridge.js
+        run: node --check app.js && node --check exchange-ui.js && node --check interactive-chart.js && node --check prediction-candles.js && node --check native-alert-bridge.js && node --check goldan-forex-engine.js && node --check goldan-live-feed.js && node --check goldan-chart.js
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
